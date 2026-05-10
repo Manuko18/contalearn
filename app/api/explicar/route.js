@@ -11,9 +11,7 @@ export async function POST(req) {
     }
 
     const listaErrores = errores.map((e, i) =>
-      `${i + 1}. Pregunta: "${e.pregunta}"
-   Respuesta del estudiante: "${e.tuRespuesta}"
-   Respuesta correcta: "${e.respuestaCorrecta}"`
+      `ERROR_${i + 1}:\nPregunta: "${e.pregunta}"\nEstudiante respondió: "${e.tuRespuesta}"\nRespuesta correcta: "${e.respuestaCorrecta}"`
     ).join("\n\n")
 
     const { content } = await client.messages.create({
@@ -21,29 +19,35 @@ export async function POST(req) {
       max_tokens: 2048,
       messages: [{
         role: "user",
-        content: `Eres un tutor de contabilidad para Ecuador. Analiza estos errores del estudiante en el nivel "${nivel}".
+        content: `Eres un tutor de contabilidad para Ecuador. Analiza estos ${errores.length} errores.
 
 ${listaErrores}
 
-Para cada error responde en este formato exacto (sin markdown, sin asteriscos):
+Responde EXACTAMENTE en este formato, sin markdown, sin asteriscos, separando cada error con "===":
 
-[N] CONCEPTO: (1 línea explicando el concepto clave)
-EJEMPLO: (ejemplo numérico concreto con datos ecuatorianos: USD, RUC, SRI, IESS según aplique)
-ERROR: (qué parte específica del cálculo o asiento falló)
-PRACTICA: (qué debe repasar o ejercitar)
+CONCEPTO: (1 línea)
+EJEMPLO: (ejemplo con datos ecuatorianos: USD, RUC, SRI, IESS)
+ERROR: (qué confundió exactamente)
+PRACTICA: (qué repasar)
+===
+CONCEPTO: ...
+EJEMPLO: ...
+ERROR: ...
+PRACTICA: ...
+===
 
-Máximo 3 líneas por sección. Directo y útil.`,
+Un bloque por cada error, en el mismo orden. Máximo 2 líneas por campo.`,
       }],
     })
 
     const texto = content[0].text
-    const bloques = texto.split(/\[\d+\]/).filter(Boolean)
+    const bloques = texto.split(/===+/).map(b => b.trim()).filter(Boolean)
 
     const explicaciones = errores.map((_, i) => {
       const bloque = bloques[i] || ""
       const get = (label) => {
-        const match = bloque.match(new RegExp(`${label}:([\\s\\S]*?)(?=CONCEPTO:|EJEMPLO:|ERROR:|PRACTICA:|$)`))
-        return match ? match[1].trim().replace(/\s*\[\d+\]\s*$/, "").trim() : ""
+        const match = bloque.match(new RegExp(`${label}:\\s*([\\s\\S]*?)(?=\\n(?:CONCEPTO|EJEMPLO|ERROR|PRACTICA):|$)`))
+        return match ? match[1].trim() : ""
       }
       return {
         concepto: get("CONCEPTO"),
