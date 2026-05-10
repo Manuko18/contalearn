@@ -1,5 +1,5 @@
 # ContaLearn — Contexto actual
-> Última actualización: 2026-05-10
+> Última actualización: 2026-05-11
 
 ---
 
@@ -7,11 +7,15 @@
 
 - Login / registro / recuperar contraseña ✅
 - Dashboard: XP, vidas, racha, rango, misiones del día ✅
-- 5 niveles con 4 sub-niveles desbloqueables ✅
-- **Contenido real en los 5 niveles** (63 preguntas nuevas en niveles 3/4/5) ✅
+- **8 niveles lineales** agrupados en 4 categorías (Básico/Intermedio/Avanzado/Experto) ✅
+- Niveles 1–5: contabilidad básica → avanzada ✅
+- Niveles 6–8: tributación (IVA/DIAN, Renta, Liquidación) ✅
+- **Modo 🧪 Test**: desbloquea todo, da 99 vidas, NO guarda XP/progreso ✅
 - Teoría con voz sincronizada palabra por palabra ✅
+- Bug de voz corregido: ya no sigue sonando al cambiar slide o salir de teoría ✅
+- Botón "Siguiente" con animación de relleno (previene skip ultra-rápido) ✅
 - Juego: timer 30s, vidas, combo, sonidos, partículas ✅
-- XP y progreso guardados en Supabase ✅
+- XP y progreso guardados en Supabase (solo fuera de modo Test) ✅
 - Ranking global ✅
 - Recarga automática de vidas (+1 cada 30 min) ✅
 - Misiones diarias con progreso y XP bonus ✅
@@ -31,13 +35,15 @@
 
 ## En qué punto quedamos
 
-Última sesión (2026-05-10): contenido niveles 3/4/5 + fixes de bugs + deploy.
+Última sesión (2026-05-11): reestructura 5→8 niveles + tributación + fixes voz + modo test.
 
-- Contenido cargado en Supabase: 21 lecciones × 3 niveles (63 total)
-- Bug verdadero/falso corregido (UI usaba `"true"`/`"false"`, BD tenía `"Verdadero"`/`"Falso"`)
-- Voz que seguía sonando al salir/quedarse sin vidas → corregida
-- Ambient movido al layout (persiste entre páginas), rediseñado como lo-fi gaming
-- Deploy exitoso en Vercel conectado al repo GitHub `Manuko18/contalearn`
+- Reestructura de niveles: de 5 niveles con 4 sub-tiers (Junior/Semi-Junior/Senior) a 8 niveles lineales agrupados por categoría. El feedback era que los sub-tiers confundían y no se sentían distintos.
+- Niveles 6/7/8 creados en Supabase (SQL `seed-niveles-6-7-8.sql` ejecutado + fixes de campos).
+- Teoría de niveles 1/2 reescrita para alinearla con sus preguntas (referenciaban NIC/NIIF que la teoría no mencionaba). SQL ejecutado: `fix-contenido-completo.sql`.
+- Bugs de Web Speech API resueltos definitivamente (ver sección Problemas activos → resueltos).
+- Modo test implementado: botón 🧪 en `/niveles`, `localStorage["modoTest"]`, 99 vidas al cargar, sin guardar XP.
+- Verdadero/Falso siempre marcado incorrecto → corregido con SQL (BD ahora usa `"true"`/`"false"`).
+- Git push al repo `Manuko18/contalearn` rama `main` → Vercel redesplegado.
 
 ---
 
@@ -52,17 +58,18 @@
   ALTER TABLE users ADD COLUMN IF NOT EXISTS clean_sessions INTEGER DEFAULT 0;
   ```
 
-### 2. Corregir pregunta con referencia al PUC colombiano
-- Nivel 3, orden 5 y orden 16 tienen referencias al "PUC colombiano" que no corresponden a NIC/NIIF
-- SQL de corrección listo (ver última sesión del historial)
+### 2. Quitar el modo 🧪 Test cuando terminen las pruebas
+- `app/niveles/page.jsx`: eliminar el botón y el state `modoTest`
+- `app/lecciones/page.jsx`: eliminar todos los `if (!modoTest)` y las ramas test
+- Limpiar `localStorage.removeItem("modoTest")`
 
 ### 3. Para futuros cambios al código
 ```
 git add .
 git commit -m "descripción"
-git push
+git push origin HEAD:main
 ```
-Vercel redespliega automáticamente.
+Vercel redespliega automáticamente. **Siempre usar `HEAD:main`** desde el worktree.
 
 ---
 
@@ -71,7 +78,6 @@ Vercel redespliega automáticamente.
 | Problema | Impacto | Notas |
 |----------|---------|-------|
 | RLS deshabilitado en Supabase | Seguridad alta | `supabase-policies.sql` listo, falta ejecutar |
-| 2 preguntas nivel 3 mencionan PUC colombiano | Bajo | SQL de fix pendiente de ejecutar |
 | Logros sin columnas en BD (`max_combo`, etc.) | Bajo | Funciona con `?? 0`, columnas opcionales |
 | `transicionDif` feature incompleta | Ninguno | Siempre `null`, placeholder futuro |
 | Imágenes en preguntas (`imagen_url`) | Bajo | Columna existe, ninguna pregunta tiene URL |
@@ -89,7 +95,7 @@ app/
   page.jsx              Dashboard principal
   layout.jsx            Layout raíz (AmbientProvider aquí)
   login/page.jsx        Login + Registro
-  niveles/page.jsx      Mapa de niveles
+  niveles/page.jsx      Mapa de 8 niveles agrupados por categoría + botón 🧪 Test
   lecciones/page.jsx    Motor del juego (archivo más grande)
   ranking/page.jsx      Tabla de posiciones
 
@@ -107,8 +113,11 @@ lib/
   achievements.js       12 logros, localStorage
   particles.js          7 presets de partículas
 
-seed-niveles-3-4-5.sql  Contenido niveles 3/4/5 (ya ejecutado)
-supabase-policies.sql   RLS pendiente de ejecutar
+seed-niveles-3-4-5.sql     Contenido niveles 3/4/5 (ya ejecutado)
+seed-niveles-6-7-8.sql     Contenido niveles 6/7/8 (ya ejecutado + fixes)
+fix-contenido-completo.sql Reescritura teoría/preguntas niveles 1/2 (ya ejecutado)
+fix-tipo-ejercicio.sql     opcion_multiple → multiple_choice (ya ejecutado)
+supabase-policies.sql      RLS pendiente de ejecutar
 ```
 
 **BD:** `users` · `niveles` · `lecciones` · `progreso_usuario` · `misiones_diarias`
@@ -116,3 +125,22 @@ supabase-policies.sql   RLS pendiente de ejecutar
 **Columnas lecciones usadas:** `nivel_id` · `orden` · `tipo_ejercicio` · `dificultad` · `contenido_json`
 
 **Columnas niveles usadas:** `titulo` · `descripcion` · `emoji` · `orden` · `teoria_json`
+
+**Campos `contenido_json` (múltiple choice):**
+```json
+{
+  "pregunta": "...",
+  "opciones": ["A", "B", "C", "D"],
+  "respuesta_correcta": "A",
+  "explicacion_error": "..."
+}
+```
+
+**Campos `contenido_json` (verdadero/falso):**
+```json
+{
+  "enunciado": "...",
+  "respuesta_correcta": "true",
+  "explicacion_error": "..."
+}
+```

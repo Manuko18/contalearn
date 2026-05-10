@@ -183,4 +183,41 @@ SMTP               Gmail smtp.gmail.com:587 App Password
 | Seed SQL fallaba por columnas inexistentes | Corregido `nombre`→`titulo`, `icono`→`emoji`, removido `titulo` de lecciones |
 | FK constraint al borrar lecciones | DELETE de `progreso_usuario` primero, luego DELETE de `lecciones` |
 
+## [2026-05-11] — Sesión: 8 niveles lineales + tributación + fixes voz + modo test
+
+### Decisiones tomadas
+
+- **Reestructura 5→8 niveles lineales**: eliminados los 4 sub-tiers (Junior/Semi-Junior/Semi-Senior/Senior) por feedback de usuario (confusos, no se sentían distintos). Ahora son 8 niveles lineales agrupados visualmente en 4 categorías: Básico (1-2), Intermedio (3-4), Avanzado (5-6), Experto (7-8).
+- **Desbloqueo secuencial**: `desbloqueado = modoTest || index === 0 || progresoPorNivel[index-1]?.completo`. El primer nivel siempre abierto.
+- **Niveles 6/7/8 de tributación**: IVA/DIAN (conceptos), Impuesto de Renta (UVT, declarantes, tarifas), Liquidación y Casos Prácticos. 12 preguntas cada uno, 3 slides de teoría.
+- **`vozIdRef` counter**: cada llamada a `hablar()` recibe ID único. El setTimeout(200ms) solo habla si el ID sigue siendo el actual. Elimina race conditions en navegación ultra-rápida.
+- **`detenerVozGlobal()` vs `pararVoz()`**: `detenerVozGlobal` solo hace `cancel()` (para transición de slides, permite que el siguiente `speak()` funcione). `pararVoz` hace `pause()+cancel()` (para salir de teoría/unmount, agresivo). Chrome requiere `resume()` después de `pause()` antes de cualquier `speak()`.
+- **Botón con relleno de color** (botonFill state): width 0→100% en 1.2s linear. Hasta que llega al 100% (`botonListo = true`) el click no avanza. Previene skip ultra-rápido sin bloquear UX.
+- **Modo Test en `localStorage["modoTest"]`**: persiste entre páginas. En `/lecciones`: vidas=99 al cargar, todos los `supabase.from().insert/update` de XP/progreso van dentro de `if (!modoTest)`.
+- **Seed SQL con bug de campos**: `seed-niveles-6-7-8.sql` usó `respuesta` (en vez de `respuesta_correcta`), `explicacion` (en vez de `explicacion_error`), `opcion_multiple` (en vez de `multiple_choice`). Corregido con `fix-contenido-completo.sql` (JSONB key rename) y `fix-tipo-ejercicio.sql` (UPDATE tipo).
+- **Git push desde worktree**: siempre `git push origin HEAD:main`, nunca `git push` solo (la rama local no coincide con el remoto).
+
+### Funcionalidades completadas
+
+- `app/niveles/page.jsx` — reescrito completo: 8 niveles lineales, CATEGORIAS grouping, botón 🧪 Test
+- `app/lecciones/page.jsx` — múltiples edits: `vozIdRef`, `vozActivaRef`, `detenerVozGlobal`, `pararVoz`, `botonListo/botonFill`, modo test (99 vidas, sin guardar XP), `dificultadParam = 0` (sin filtro), siempre empieza en teoría
+- `seed-niveles-6-7-8.sql` — creado (ya ejecutado + fixes aplicados)
+- `fix-contenido-completo.sql` — reescritura teoría niveles 1/2 + rename campos JSONB en todos los niveles
+- `fix-tipo-ejercicio.sql` — `opcion_multiple` → `multiple_choice`
+
+### Problemas resueltos
+
+| Problema | Fix |
+|----------|-----|
+| Voz sigue sonando al llegar a preguntas (skip rápido) | `vozIdRef` counter + `detenerVozGlobal()` (solo cancel) en cleanup |
+| Voz bloqueada después de `pause()` → `speak()` silencioso | `resume()` antes de cada `speak()` en `hablar()` |
+| Race condition: audio del slide anterior suena en el siguiente | `vozIdRef` — timeout abortado si ID no coincide |
+| Test mode: vidas 0 bloqueaba el juego | `setVidas(modoTest ? 99 : perfil.vidas ?? 5)` al cargar |
+| Test mode: XP se sumaba igual | `if (!modoTest)` en toda escritura a Supabase |
+| Verdadero/Falso siempre incorrecto | SQL UPDATE: `respuesta_correcta = "true"/"false"` donde era `"Verdadero"/"Falso"` |
+| Opciones de preguntas no aparecían (niveles 6-8) | `tipo_ejercicio = 'multiple_choice'` (era `opcion_multiple`) |
+| Campos JSONB con nombre equivocado (seed bug) | JSONB key rename con `jsonb_build_object` + `-` operator |
+| Teoría de niveles 1/2 no alineada con preguntas | Reescritura de teoría + 20 preguntas nuevas en `fix-contenido-completo.sql` |
+| Sub-tiers confusos (Junior/Senior) | Eliminados; ahora 8 niveles lineales con categorías visuales |
+
 <!-- Agregar nuevas sesiones aquí arriba de esta línea, con formato [YYYY-MM-DD] -->
