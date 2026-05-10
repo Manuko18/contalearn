@@ -196,6 +196,7 @@ function LeccionInner() {
     if (!window.speechSynthesis) return
     vozActivaRef.current = true
     const miId = ++vozIdRef.current
+    window.speechSynthesis.pause()
     window.speechSynthesis.cancel()
     setPalabraActual(-1)
 
@@ -229,9 +230,10 @@ function LeccionInner() {
     u.onend = () => { setHablandoVoz(false); setPalabraActual(-1) }
     u.onerror = () => { setHablandoVoz(false); setPalabraActual(-1) }
 
-    // Solo habla si sigue siendo la llamada más reciente (evita race condition al saltar rápido)
+    // Solo habla si sigue siendo la llamada más reciente; resume() deshace el pause() anterior
     setTimeout(() => {
       if (vozIdRef.current !== miId || !vozActivaRef.current) return
+      window.speechSynthesis.resume()
       window.speechSynthesis.speak(u)
     }, 200)
   }
