@@ -125,6 +125,14 @@ function LeccionInner() {
     return () => { window.speechSynthesis?.cancel() }
   }, [])
 
+  // Seguro: cancelar voz en el instante que cambia a fase juego
+  useEffect(() => {
+    if (fase === "juego") {
+      window.speechSynthesis?.cancel()
+      if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null
+    }
+  }, [fase])
+
   // Cancelar voz cuando se quedan sin vidas (PantallaFin no desmonta el componente)
   useEffect(() => {
     if (vidas <= 0) window.speechSynthesis?.cancel()
@@ -145,8 +153,10 @@ function LeccionInner() {
     } else {
       window.speechSynthesis.onvoiceschanged = () => { ejecutarVoz(); window.speechSynthesis.onvoiceschanged = null }
     }
-    // Cancelar voz al cambiar de slide o salir de la teoría
-    return () => { window.speechSynthesis?.cancel() }
+    return () => {
+      window.speechSynthesis?.cancel()
+      if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null
+    }
   }, [slideTeoria, fase, nivel])
 
   useEffect(() => {
