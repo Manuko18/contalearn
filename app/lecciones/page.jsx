@@ -213,14 +213,19 @@ function LeccionInner() {
         setPalabraActual(palabraIdx)
       }
     }
-    // Si para cuando arranca ya no debería hablar, cancelar inmediatamente
     u.onstart = () => {
       if (!vozActivaRef.current) { window.speechSynthesis.pause(); window.speechSynthesis.cancel(); return }
       setHablandoVoz(true)
     }
     u.onend = () => { setHablandoVoz(false); setPalabraActual(-1); vozActivaRef.current = false }
     u.onerror = () => { setHablandoVoz(false); setPalabraActual(-1); vozActivaRef.current = false }
-    window.speechSynthesis.speak(u)
+
+    // Chrome necesita un tick tras cancel() para aceptar el nuevo speak()
+    setTimeout(() => {
+      if (!vozActivaRef.current) return
+      window.speechSynthesis.resume()
+      window.speechSynthesis.speak(u)
+    }, 100)
   }
 
   function detenerVoz() {
