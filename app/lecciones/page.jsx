@@ -66,6 +66,8 @@ function LeccionInner() {
   const vidasInicialesRef = useRef(5)
   const preguntasRespRef  = useRef(0)   // preguntas respondidas (correcto + incorrecto)
   const xpSesionRef     = useRef(0)     // XP real ganado esta sesión (solo primeras veces)
+  const [botonListo, setBotonListo] = useState(false)
+  const [botonFill, setBotonFill] = useState(0)
   const [showFloatXP, setShowFloatXP] = useState(false)
   const [epicEvent, setEpicEvent]     = useState(null)
   const [achQueue, setAchQueue]       = useState([])
@@ -151,6 +153,16 @@ function LeccionInner() {
     // Solo cancel aquí: el siguiente slide necesita poder hablar sin Chrome bloqueado
     return () => detenerVozGlobal()
   }, [slideTeoria, nivel])
+
+  // Relleno progresivo del botón Siguiente (previene clicks ultra-rápidos)
+  useEffect(() => {
+    if (fase !== "teoria") return
+    setBotonListo(false)
+    setBotonFill(0)
+    const t1 = setTimeout(() => setBotonFill(100), 50)       // inicia la transición CSS
+    const t2 = setTimeout(() => setBotonListo(true), 1300)   // habilita el click
+    return () => { clearTimeout(t1); clearTimeout(t2); setBotonListo(false); setBotonFill(0) }
+  }, [slideTeoria, fase])
 
   useEffect(() => {
     if (fase !== "juego" || estado !== null) return
@@ -532,10 +544,30 @@ function LeccionInner() {
             </button>
           )}
           <button
-            onClick={() => { detenerVoz(); if (esUltimo) setFase("juego"); else setSlideTeoria(s => s + 1) }}
-            className="flex-2 w-full rounded-2xl py-4 font-extrabold text-white transition-all active:scale-95"
-            style={{ background: "var(--color-primary)", boxShadow: "0 4px 0 var(--color-primary-dark)" }}>
-            {esUltimo ? "¡Empezar ejercicios! 🚀" : "Siguiente →"}
+            onClick={() => {
+              if (!botonListo) return
+              detenerVoz()
+              if (esUltimo) setFase("juego")
+              else setSlideTeoria(s => s + 1)
+            }}
+            className="flex-2 w-full rounded-2xl py-4 font-extrabold text-white relative overflow-hidden"
+            style={{
+              background: "var(--color-surface)",
+              border: "1.5px solid var(--color-border)",
+              boxShadow: botonListo ? "0 4px 0 var(--color-primary-dark)" : "none",
+              cursor: botonListo ? "pointer" : "default",
+            }}>
+            {/* Relleno progresivo */}
+            <div style={{
+              position: "absolute", inset: 0,
+              width: `${botonFill}%`,
+              background: "var(--color-primary)",
+              transition: botonFill === 0 ? "none" : "width 1.2s linear",
+              borderRadius: "inherit",
+            }} />
+            <span className="relative z-10">
+              {esUltimo ? "¡Empezar ejercicios! 🚀" : "Siguiente →"}
+            </span>
           </button>
         </div>
       </div>
