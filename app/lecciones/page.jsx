@@ -36,6 +36,7 @@ function LeccionInner() {
   const searchParams = useSearchParams()
   const nivelId = searchParams.get("nivel")
   const dificultadParam = 0
+  const modoTest = typeof window !== "undefined" && localStorage.getItem("modoTest") === "1"
 
   const [user, setUser] = useState(null)
   const [nivel, setNivel] = useState(null)
@@ -269,9 +270,9 @@ function LeccionInner() {
     emitContiEvent("error")
     setAnimacion("incorrecto")
     setTimeout(() => setAnimacion(""), 500)
-    const nuevasVidas = Math.max(vidas - 1, 0)
+    const nuevasVidas = modoTest ? vidas : Math.max(vidas - 1, 0)
     setVidas(nuevasVidas)
-    await supabase.from("users").update({ vidas: nuevasVidas }).eq("id", user.id)
+    if (!modoTest) await supabase.from("users").update({ vidas: nuevasVidas }).eq("id", user.id)
     setResultados(prev => [...prev, {
       pregunta: leccion.contenido_json.pregunta,
       correcta: false,
@@ -347,9 +348,9 @@ function LeccionInner() {
       setCombo(0)
       setFallosSegidos(f => f + 1)
       preguntasRespRef.current += 1
-      const nuevasVidas = Math.max(vidas - 1, 0)
+      const nuevasVidas = modoTest ? vidas : Math.max(vidas - 1, 0)
       setVidas(nuevasVidas)
-      await supabase.from("users").update({ vidas: nuevasVidas, ultima_vida_recargada: new Date().toISOString() }).eq("id", user.id)
+      if (!modoTest) await supabase.from("users").update({ vidas: nuevasVidas, ultima_vida_recargada: new Date().toISOString() }).eq("id", user.id)
     }
 
     setResultados(prev => [...prev, {
