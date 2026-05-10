@@ -73,6 +73,7 @@ function LeccionInner() {
   const timerRef = useRef(null)
   const audioRef = useRef(null)
   const vozActivaRef = useRef(false)
+  const vozIdRef = useRef(0)
 
 
   useEffect(() => {
@@ -194,6 +195,7 @@ function LeccionInner() {
   function hablar(texto) {
     if (!window.speechSynthesis) return
     vozActivaRef.current = true
+    const miId = ++vozIdRef.current
     window.speechSynthesis.cancel()
     setPalabraActual(-1)
 
@@ -218,15 +220,18 @@ function LeccionInner() {
       }
     }
     u.onstart = () => {
-      if (!vozActivaRef.current) { window.speechSynthesis.pause(); window.speechSynthesis.cancel(); return }
+      if (vozIdRef.current !== miId || !vozActivaRef.current) {
+        window.speechSynthesis.cancel()
+        return
+      }
       setHablandoVoz(true)
     }
-    u.onend = () => { setHablandoVoz(false); setPalabraActual(-1); vozActivaRef.current = false }
-    u.onerror = () => { setHablandoVoz(false); setPalabraActual(-1); vozActivaRef.current = false }
+    u.onend = () => { setHablandoVoz(false); setPalabraActual(-1) }
+    u.onerror = () => { setHablandoVoz(false); setPalabraActual(-1) }
 
-    // Chrome necesita tiempo tras cancel() para aceptar el nuevo speak()
+    // Solo habla si sigue siendo la llamada más reciente (evita race condition al saltar rápido)
     setTimeout(() => {
-      if (!vozActivaRef.current) return
+      if (vozIdRef.current !== miId || !vozActivaRef.current) return
       window.speechSynthesis.speak(u)
     }, 200)
   }
