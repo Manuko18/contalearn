@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"C:\\\\Users\\\\USER\\\\Desktop\\\\cotalerar}\")",
+      "Bash(npm.cmd run *)",
+      "Bash(grep -i \"\\\\.md$\")",
+      "Bash(del \"C:\\\\Users\\\\USER\\\\Desktop\\\\cotalerar}\\\\RESUMEN_APP.md\")",
+      "Bash(rm \"C:\\\\Users\\\\USER\\\\Desktop\\\\cotalerar}\\\\RESUMEN_APP.md\")",
+      "Bash(grep \"\\\\.md$\")",
+      "Bash(cd \"C:\\\\Users\\\\USER\\\\Desktop\\\\cotalerar}\" && git status 2>&1 | head -5)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git branch *)",
+      "Bash(git remote *)"
+    ]
+  }
+}
