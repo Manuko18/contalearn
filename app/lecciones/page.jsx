@@ -337,10 +337,12 @@ function LeccionInner() {
         xpSesionRef.current += 10
         setShowFloatXP(true)
         setTimeout(() => setShowFloatXP(false), 950)
-        await supabase.from("users").update({ xp_total: nuevoXp }).eq("id", user.id)
-        await supabase.from("progreso_usuario").insert([{
-          user_id: user.id, leccion_id: leccion.id, completado: true, puntaje: 10,
-        }])
+        if (!modoTest) {
+          await supabase.from("users").update({ xp_total: nuevoXp }).eq("id", user.id)
+          await supabase.from("progreso_usuario").insert([{
+            user_id: user.id, leccion_id: leccion.id, completado: true, puntaje: 10,
+          }])
+        }
       }
     } else {
       sound.incorrect()
@@ -419,7 +421,7 @@ function LeccionInner() {
         .from("users").select("xp_total").eq("id", user.id).single()
       const nuevoXp = (fresh?.xp_total ?? xp) + totalBonus
       setXp(nuevoXp)
-      await supabase.from("users").update({ xp_total: nuevoXp }).eq("id", user.id)
+      if (!modoTest) await supabase.from("users").update({ xp_total: nuevoXp }).eq("id", user.id)
     }
   }
 
