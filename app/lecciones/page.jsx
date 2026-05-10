@@ -182,14 +182,12 @@ function LeccionInner() {
     if (!window.speechSynthesis) return
     vozActivaRef.current = false
     window.speechSynthesis.onvoiceschanged = null
-    window.speechSynthesis.pause()
     window.speechSynthesis.cancel()
   }
 
   function hablar(texto) {
     if (!window.speechSynthesis) return
     vozActivaRef.current = true
-    window.speechSynthesis.resume()
     window.speechSynthesis.cancel()
     setPalabraActual(-1)
 
@@ -220,19 +218,17 @@ function LeccionInner() {
     u.onend = () => { setHablandoVoz(false); setPalabraActual(-1); vozActivaRef.current = false }
     u.onerror = () => { setHablandoVoz(false); setPalabraActual(-1); vozActivaRef.current = false }
 
-    // Chrome necesita un tick tras cancel() para aceptar el nuevo speak()
+    // Chrome necesita tiempo tras cancel() para aceptar el nuevo speak()
     setTimeout(() => {
       if (!vozActivaRef.current) return
-      window.speechSynthesis.resume()
       window.speechSynthesis.speak(u)
-    }, 100)
+    }, 200)
   }
 
   function detenerVoz() {
     vozActivaRef.current = false
     if (window.speechSynthesis) {
       window.speechSynthesis.onvoiceschanged = null
-      window.speechSynthesis.pause()
       window.speechSynthesis.cancel()
     }
     setHablandoVoz(false)
