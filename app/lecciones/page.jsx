@@ -72,6 +72,8 @@ function LeccionInner() {
   const [showFloatXP, setShowFloatXP] = useState(false)
   const [epicEvent, setEpicEvent]     = useState(null)
   const [achQueue, setAchQueue]       = useState([])
+  const [explicacionesIA, setExplicacionesIA] = useState([])
+  const [cargandoIA, setCargandoIA] = useState(false)
   const [curAch, setCurAch]           = useState(null)
   const timerRef = useRef(null)
   const audioRef = useRef(null)
@@ -459,6 +461,19 @@ function LeccionInner() {
         }, isPerfect || pctFinal >= 70 ? 2800 : 400)
       }
       setFase("resultados")
+      // Llamar a Claude para explicar los errores (resultados ya incluye el último)
+      const errores = resultados.filter(r => !r.correcta && r.pregunta)
+      if (errores.length > 0) {
+        setCargandoIA(true)
+        fetch("/api/explicar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ errores, nivel: nivel?.titulo }),
+        })
+          .then(r => r.json())
+          .then(({ explicaciones }) => setExplicacionesIA(explicaciones || []))
+          .finally(() => setCargandoIA(false))
+      }
     } else {
       setIndice(i => i + 1)
     }
@@ -659,22 +674,43 @@ function LeccionInner() {
 
           {/* Detalle por pregunta */}
           <p className="text-sm font-bold mb-3">Detalle de respuestas</p>
+          {cargandoIA && (
+            <div className="rounded-2xl p-4 mb-3 flex items-center gap-3" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
+              <div className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--color-primary)", borderTopColor: "transparent" }} />
+              <p className="text-sm text-zinc-400">Conti está analizando tus errores...</p>
+            </div>
+          )}
           <div className="flex flex-col gap-3 mb-6">
-            {resultados.map((r, i) => (
-              <div key={i} className="rounded-2xl p-4" style={{ background: r.correcta ? "#0d2e14" : "#2e0d0d", border: `1px solid ${r.correcta ? "var(--color-primary)" : "var(--color-danger)"}` }}>
-                <div className="flex justify-between items-start mb-1">
-                  <p className="text-sm font-bold flex-1 pr-2">{r.correcta ? "✅" : "❌"} {r.pregunta}</p>
-                  <span className="text-xs text-zinc-500 flex-shrink-0">{r.tiempo}s</span>
-                </div>
-                {!r.correcta && (
-                  <div className="text-xs mt-2 flex flex-col gap-1">
-                    <p className="text-zinc-400">Tu respuesta: <span style={{ color: "var(--color-danger)" }}>{r.tuRespuesta}</span></p>
-                    <p className="text-zinc-400">Correcta: <span style={{ color: "var(--color-primary)" }}>{mostrarRespuesta(String(r.respuestaCorrecta))}</span></p>
-                    {r.explicacion && <p className="mt-1 text-zinc-300 italic">💡 {r.explicacion}</p>}
+            {(() => {
+              let errorIdx = 0
+              return resultados.map((r, i) => {
+                const ia = !r.correcta ? explicacionesIA[errorIdx++] : null
+                return (
+                  <div key={i} className="rounded-2xl p-4" style={{ background: r.correcta ? "#0d2e14" : "#2e0d0d", border: `1px solid ${r.correcta ? "var(--color-primary)" : "var(--color-danger)"}` }}>
+                    <div className="flex justify-between items-start mb-1">
+                      <p className="text-sm font-bold flex-1 pr-2">{r.correcta ? "✅" : "❌"} {r.pregunta}</p>
+                      <span className="text-xs text-zinc-500 flex-shrink-0">{r.tiempo}s</span>
+                    </div>
+                    {!r.correcta && (
+                      <div className="text-xs mt-2 flex flex-col gap-1">
+                        <p className="text-zinc-400">Tu respuesta: <span style={{ color: "var(--color-danger)" }}>{r.tuRespuesta}</span></p>
+                        <p className="text-zinc-400">Correcta: <span style={{ color: "var(--color-primary)" }}>{mostrarRespuesta(String(r.respuestaCorrecta))}</span></p>
+                        {ia ? (
+                          <div className="mt-2 flex flex-col gap-2 pt-2" style={{ borderTop: "1px solid rgba(255,75,75,0.2)" }}>
+                            {ia.concepto && <p className="text-zinc-200"><span className="font-bold" style={{ color: "var(--color-info)" }}>📘 Concepto:</span> {ia.concepto}</p>}
+                            {ia.ejemplo  && <p className="text-zinc-200"><span className="font-bold" style={{ color: "var(--color-warning)" }}>🔢 Ejemplo:</span> {ia.ejemplo}</p>}
+                            {ia.error    && <p className="text-zinc-200"><span className="font-bold" style={{ color: "var(--color-danger)" }}>⚠️ Tu error:</span> {ia.error}</p>}
+                            {ia.practica && <p className="text-zinc-200"><span className="font-bold" style={{ color: "var(--color-primary)" }}>🎯 Practica:</span> {ia.practica}</p>}
+                          </div>
+                        ) : (
+                          r.explicacion && <p className="mt-1 text-zinc-300 italic">💡 {r.explicacion}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+                )
+              })
+            })()}
           </div>
 
           <div className="flex gap-3">
