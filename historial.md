@@ -220,4 +220,33 @@ SMTP               Gmail smtp.gmail.com:587 App Password
 | Teoría de niveles 1/2 no alineada con preguntas | Reescritura de teoría + 20 preguntas nuevas en `fix-contenido-completo.sql` |
 | Sub-tiers confusos (Junior/Senior) | Eliminados; ahora 8 niveles lineales con categorías visuales |
 
+## [2026-05-12] — Sesión: Limpieza BD + integración Claude API
+
+### Decisiones tomadas
+
+- **Claude Haiku** (`claude-haiku-4-5-20251001`) elegido sobre Sonnet para explicaciones: suficiente para texto educativo, ~4× más barato (~$0.003/sesión vs ~$0.013). Con $5 alcanza ~1,600 sesiones con errores.
+- **Una sola llamada al final** de la sesión (no por pregunta): se pasan todos los errores juntos, Claude devuelve un bloque por error. Más eficiente y evita latencia durante el juego.
+- **Formato fijo sin markdown**: el prompt pide `[N] CONCEPTO: / EJEMPLO: / ERROR: / PRACTICA:` sin asteriscos. Se parsea con regex en el route.
+- **Feedback inmediato simplificado**: el panel de feedback durante el juego muestra solo ✅/❌ + respuesta correcta + `explicacion_error` del campo en BD. La explicación IA completa va al final.
+- **`/api/explicar/route.js`** con try/catch completo: retorna `{ explicaciones: [], error: msg }` en caso de fallo (nunca 500 vacío). Permite que el cliente falle silenciosamente mostrando el fallback `explicacion_error`.
+- **9 lecciones `completar_espacio` convertidas a `multiple_choice`**: el motor del juego no tiene lógica para ese tipo. Contenido era bueno (preguntas de completar blancos), se añadieron 4 opciones por pregunta. SQL ejecutado directamente.
+- **RLS confirmado como ya activo**: al intentar re-ejecutar `supabase-policies.sql` dio error "policy already exists". Todas las tablas ya protegidas desde sesión anterior.
+
+### Funcionalidades completadas
+
+- `app/api/explicar/route.js` — API route Claude Haiku, parsea 4 secciones por error
+- `app/lecciones/page.jsx` — estado `explicacionesIA` + `cargandoIA`; llamada fetch en `siguiente()` al llegar a resultados; spinner + cards IA en pantalla resultados
+- BD: 9 lecciones convertidas de `completar_espacio` → `multiple_choice` con opciones reales
+- `@anthropic-ai/sdk` agregado a `package.json`
+- `ANTHROPIC_API_KEY` configurada en Vercel (falta saldo para funcionar)
+
+### Problemas resueltos
+
+| Problema | Fix |
+|----------|-----|
+| 9 lecciones `completar_espacio` rompían el juego | Convertidas a `multiple_choice` con opciones |
+| RLS "pendiente" en contexto | Confirmado ya activo — policy existía |
+| API route devolvía 500 vacío | try/catch + Response.json con error message |
+| Modelo `claude-haiku-4-5` incorrecto | Corregido a `claude-haiku-4-5-20251001` |
+
 <!-- Agregar nuevas sesiones aquí arriba de esta línea, con formato [YYYY-MM-DD] -->
