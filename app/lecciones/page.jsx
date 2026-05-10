@@ -94,12 +94,12 @@ function LeccionInner() {
 
       if (!perfil) {
         await supabase.from("users").insert([{ id: user.id, email: user.email, xp_total: 0, racha_actual: 0, vidas: 5, ultima_vida_recargada: new Date().toISOString() }])
-        setXp(0); setVidas(5)
-        vidasInicialesRef.current = 5
+        setXp(0); setVidas(modoTest ? 99 : 5)
+        vidasInicialesRef.current = modoTest ? 99 : 5
       } else {
         setXp(perfil.xp_total ?? 0)
-        setVidas(perfil.vidas ?? 5)
-        vidasInicialesRef.current = perfil.vidas ?? 5  // guardar vidas al inicio de sesión
+        setVidas(modoTest ? 99 : (perfil.vidas ?? 5))
+        vidasInicialesRef.current = modoTest ? 99 : (perfil.vidas ?? 5)
       }
 
       setNivel(nivelData)
