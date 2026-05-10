@@ -43,7 +43,7 @@ Máximo 3 líneas por sección. Directo y útil.`,
       const bloque = bloques[i] || ""
       const get = (label) => {
         const match = bloque.match(new RegExp(`${label}:([\\s\\S]*?)(?=CONCEPTO:|EJEMPLO:|ERROR:|PRACTICA:|$)`))
-        return match ? match[1].trim() : ""
+        return match ? match[1].trim().replace(/\s*\[\d+\]\s*$/, "").trim() : ""
       }
       return {
         concepto: get("CONCEPTO"),
