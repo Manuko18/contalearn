@@ -189,7 +189,7 @@ function LeccionInner() {
   function hablar(texto) {
     if (!window.speechSynthesis) return
     vozActivaRef.current = true
-    window.speechSynthesis.pause()
+    window.speechSynthesis.resume()
     window.speechSynthesis.cancel()
     setPalabraActual(-1)
 
