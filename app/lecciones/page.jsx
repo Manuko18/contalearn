@@ -121,38 +121,35 @@ function LeccionInner() {
     return () => { clearTimeout(t0); clearTimeout(t1); clearTimeout(t2) }
   }, [combo])
 
-  // Cancelar voz al desmontar el componente (navegar a otra página)
+  // Parada agresiva (pause+cancel) al desmontar — navegación a otra página
   useEffect(() => {
-    return () => detenerVozGlobal()
+    return () => pararVoz()
   }, [])
 
-  // Seguro: cancelar voz en el instante que cambia a fase juego
+  // Parada agresiva al salir de teoría o quedarse sin vidas
   useEffect(() => {
-    if (fase === "juego") detenerVozGlobal()
+    if (fase !== "teoria") pararVoz()
   }, [fase])
-
-  // Cancelar voz cuando se quedan sin vidas
   useEffect(() => {
-    if (vidas <= 0) detenerVozGlobal()
+    if (vidas <= 0) pararVoz()
   }, [vidas])
 
-  // Hablar al cambiar slide de teoría
+  // Hablar al cambiar slide — cleanup usa solo cancel() para no bloquear el siguiente
   useEffect(() => {
-    if (fase !== "teoria") return
-    if (vidas <= 0) return
+    if (fase !== "teoria" || vidas <= 0) return
     const slides = nivel?.teoria_json || []
     const slide = slides[slideTeoria]
     if (!slide) return
 
-    // Esperar que las voces carguen si es la primera vez
     const ejecutarVoz = () => hablar(`${slide.titulo}. ${slide.contenido}`)
     if (window.speechSynthesis.getVoices().length > 0) {
       ejecutarVoz()
     } else {
       window.speechSynthesis.onvoiceschanged = () => { ejecutarVoz(); window.speechSynthesis.onvoiceschanged = null }
     }
+    // Solo cancel aquí: el siguiente slide necesita poder hablar sin Chrome bloqueado
     return () => detenerVozGlobal()
-  }, [slideTeoria, fase, nivel])
+  }, [slideTeoria, nivel])
 
   useEffect(() => {
     if (fase !== "juego" || estado !== null) return
@@ -177,11 +174,20 @@ function LeccionInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indice, fase, estado])
 
-  // Sin setState — segura para llamar desde cleanups de useEffect y unmount
+  // Solo cancel — para transiciones entre slides (permite que el siguiente hable)
   function detenerVozGlobal() {
     if (!window.speechSynthesis) return
     vozActivaRef.current = false
     window.speechSynthesis.onvoiceschanged = null
+    window.speechSynthesis.cancel()
+  }
+
+  // Pause + cancel — para salir de teoría, desmontar o quedarse sin vidas
+  function pararVoz() {
+    if (!window.speechSynthesis) return
+    vozActivaRef.current = false
+    window.speechSynthesis.onvoiceschanged = null
+    window.speechSynthesis.pause()
     window.speechSynthesis.cancel()
   }
 
