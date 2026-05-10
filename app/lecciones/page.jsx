@@ -901,23 +901,34 @@ function LeccionInner() {
         <div className="fixed bottom-0 left-0 right-0 px-4 py-5 slide-up"
           style={{
             background: estado === "correcto"
-              ? "rgba(13,46,20,0.95)"
-              : "rgba(46,13,13,0.95)",
+              ? "rgba(13,46,20,0.97)"
+              : "rgba(46,13,13,0.97)",
             backdropFilter: "blur(12px)",
             WebkitBackdropFilter: "blur(12px)",
             borderTop: `2px solid ${estado === "correcto" ? "var(--color-primary)" : "var(--color-danger)"}`,
             boxShadow: `0 -8px 32px ${estado === "correcto" ? "rgba(88,204,2,0.15)" : "rgba(255,75,75,0.15)"}`,
           }}>
           <div className="max-w-2xl mx-auto">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-2xl">{estado === "correcto" ? "✅" : estado === "tiempo" ? "⏱️" : "❌"}</span>
-              <div>
+            <div className="flex items-start gap-3 mb-3">
+              <span className="text-2xl mt-0.5">{estado === "correcto" ? "✅" : estado === "tiempo" ? "⏱️" : "❌"}</span>
+              <div className="flex-1">
                 <p className="font-extrabold text-lg">
                   {estado === "correcto" ? "¡Correcto! +10 XP" : estado === "tiempo" ? "¡Tiempo agotado!" : "Incorrecto"}
                 </p>
-                <p className="text-sm text-zinc-400">
-                  {estado === "correcto" ? "¡Sigue así!" : "Verás la respuesta al final 📊"}
-                </p>
+                {estado === "correcto" ? (
+                  <p className="text-sm text-zinc-400 mt-0.5">¡Sigue así!</p>
+                ) : (
+                  <div className="mt-1 flex flex-col gap-1">
+                    <p className="text-sm font-bold" style={{ color: "var(--color-primary)" }}>
+                      Respuesta correcta: {mostrarRespuesta(String(c.respuesta_correcta))}
+                    </p>
+                    {c.explicacion_error && (
+                      <p className="text-sm leading-relaxed" style={{ color: "#d1d5db" }}>
+                        💡 {c.explicacion_error}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             <button onClick={siguiente}
