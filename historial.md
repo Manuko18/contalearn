@@ -150,4 +150,37 @@ SMTP               Gmail smtp.gmail.com:587 App Password
 
 ---
 
+## [2026-05-10] — Sesión: Contenido niveles 3/4/5 + fixes + deploy
+
+### Decisiones tomadas
+
+- **Columnas reales de la BD**: `niveles` usa `titulo`/`emoji` (no `nombre`/`icono`). `lecciones` no tiene columna `titulo`. Descubierto al ejecutar el seed SQL.
+- **Verdadero/Falso en BD como `"true"`/`"false"`** (strings), no `"Verdadero"`/`"Falso"`. El UI hardcodea esos valores internamente. Función `mostrarRespuesta()` convierte para display.
+- **Ambient movido al layout**: `AmbientProvider.jsx` en `layout.jsx` para que persista entre páginas sin reiniciarse. El dashboard ya no maneja el ambient.
+- **Lo-fi gaming ambient**: arpeggio pentatónico menor de La (A C D E G A G E), scheduler de Web Audio API sin drift, bajo continuo en A1. Reemplazó el pad de acordes Am7 y el drone "Espacio".
+- **DELETE antes de INSERT en seed**: necesario porque nivel 3 tenía lecciones previas. Se borran también registros de `progreso_usuario` para respetar FK.
+
+### Funcionalidades completadas
+
+- 63 lecciones nuevas en niveles 3/4/5 (21 × 3), 4 dificultades cada uno
+- Teoría (5 slides) para niveles 3/4/5 en `teoria_json`
+- `mostrarRespuesta()` en `lecciones/page.jsx` — convierte `"true"`/`"false"` a `"Verdadero"`/`"Falso"` en resultados
+- `AmbientProvider.jsx` — Client Component para ambient global en layout
+- Deploy en Vercel: contalearn.vercel.app (conectado a GitHub Manuko18/contalearn)
+- Repo GitHub inicializado y subido desde cero
+
+### Problemas resueltos
+
+| Problema | Fix |
+|----------|-----|
+| Voz sigue al navegar a otra página | `useEffect` unmount cancela `speechSynthesis` |
+| Voz sigue al avanzar rápido entre slides | `return () => cancel()` en useEffect de teoría |
+| Voz suena en pantalla "Sin vidas" | `useEffect` que cancela cuando `vidas <= 0` |
+| Voz suena aunque `PantallaFin` esté activa | `if (vidas <= 0) return` en useEffect de teoría |
+| Botones X no detenían voz al instante | `detenerVoz()` antes de `router.push` |
+| Preguntas verdadero/falso siempre incorrectas | BD tenía `"Verdadero"`, UI compara `"true"` → UPDATE SQL |
+| Ambient se cortaba al cambiar de página | Movido a layout como singleton global |
+| Seed SQL fallaba por columnas inexistentes | Corregido `nombre`→`titulo`, `icono`→`emoji`, removido `titulo` de lecciones |
+| FK constraint al borrar lecciones | DELETE de `progreso_usuario` primero, luego DELETE de `lecciones` |
+
 <!-- Agregar nuevas sesiones aquí arriba de esta línea, con formato [YYYY-MM-DD] -->

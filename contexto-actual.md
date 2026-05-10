@@ -1,5 +1,5 @@
 # ContaLearn — Contexto actual
-> Última actualización: 2026-05-09
+> Última actualización: 2026-05-10
 
 ---
 
@@ -8,6 +8,7 @@
 - Login / registro / recuperar contraseña ✅
 - Dashboard: XP, vidas, racha, rango, misiones del día ✅
 - 5 niveles con 4 sub-niveles desbloqueables ✅
+- **Contenido real en los 5 niveles** (63 preguntas nuevas en niveles 3/4/5) ✅
 - Teoría con voz sincronizada palabra por palabra ✅
 - Juego: timer 30s, vidas, combo, sonidos, partículas ✅
 - XP y progreso guardados en Supabase ✅
@@ -16,47 +17,52 @@
 - Misiones diarias con progreso y XP bonus ✅
 - Sistema de rangos (Bronce → Maestro, 0–300 XP) ✅
 - Sistema de logros con toasts animados ✅
-- Sonido ambiente (Web Audio API, 4 capas, arranca con primer click) ✅
+- Ambient lo-fi gaming (arpeggio pentatónico, persiste en todas las páginas) ✅
 - Partículas centralizadas (`lib/particles.js`, 7 presets) ✅
 - Conti Core evolutivo (añade anillos y símbolos según XP) ✅
 - EpicMoment overlay (levelComplete, perfectRun, comboMax, rankUp…) ✅
-- FondoDinamico reactivo (canvas cambia color/velocidad con eventos) ✅
+- FondoDinamico reactivo ✅
 - Transiciones de página (PageTransition) ✅
 - Loading premium (LoadingConti) ✅
 - Navbar glassmorphism ✅
-- **Lint: 0 errores · Build: exitoso** ✅
+- **Deploy en Vercel: contalearn.vercel.app** ✅
 
 ---
 
 ## En qué punto quedamos
 
-Última sesión (2026-05-09): corrección técnica completa.
-- 22 errores/warnings de ESLint → 0
-- Bug de `vidas || 5` corregido → `??`
-- Anti-farmeo de XP implementado (check de `progreso_usuario` antes de sumar)
-- Misiones: XP calculado con `xpSesionRef` (solo correctas-primera vez), bonus acumulado en una sola escritura a BD
-- `supabase-policies.sql` creado (pendiente aplicar en Supabase)
+Última sesión (2026-05-10): contenido niveles 3/4/5 + fixes de bugs + deploy.
+
+- Contenido cargado en Supabase: 21 lecciones × 3 niveles (63 total)
+- Bug verdadero/falso corregido (UI usaba `"true"`/`"false"`, BD tenía `"Verdadero"`/`"Falso"`)
+- Voz que seguía sonando al salir/quedarse sin vidas → corregida
+- Ambient movido al layout (persiste entre páginas), rediseñado como lo-fi gaming
+- Deploy exitoso en Vercel conectado al repo GitHub `Manuko18/contalearn`
 
 ---
 
 ## Pendientes inmediatos
 
-### 1. Aplicar políticas de seguridad en Supabase
-- Abrir SQL Editor en Supabase → ejecutar `supabase-policies.sql`
-- Agregar columnas opcionales para logros si se quieren en BD:
+### 1. Aplicar políticas de seguridad en Supabase (RLS)
+- SQL Editor → ejecutar `supabase-policies.sql`
+- Columnas opcionales para logros:
   ```sql
   ALTER TABLE users ADD COLUMN IF NOT EXISTS max_combo INTEGER DEFAULT 0;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS perfect_sessions INTEGER DEFAULT 0;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS clean_sessions INTEGER DEFAULT 0;
   ```
 
-### 2. Contenido de niveles 3, 4 y 5
-- Niveles 1 y 2 tienen contenido técnico real (NIC/NIIF)
-- Niveles 3 (Débitos/Créditos), 4 (Estados Financieros), 5 (Avanzado) necesitan preguntas y teoría
+### 2. Corregir pregunta con referencia al PUC colombiano
+- Nivel 3, orden 5 y orden 16 tienen referencias al "PUC colombiano" que no corresponden a NIC/NIIF
+- SQL de corrección listo (ver última sesión del historial)
 
-### 3. Deploy en Vercel
-- La app nunca ha sido desplegada en producción
-- `.env.local` con las variables de Supabase
+### 3. Para futuros cambios al código
+```
+git add .
+git commit -m "descripción"
+git push
+```
+Vercel redespliega automáticamente.
 
 ---
 
@@ -64,10 +70,11 @@
 
 | Problema | Impacto | Notas |
 |----------|---------|-------|
-| RLS deshabilitado en Supabase | Seguridad alta | Políticas listas en `supabase-policies.sql`, falta ejecutar |
-| Logros dependen de campos que podrían no existir en BD (`max_combo`, etc.) | Bajo (usa `?? 0`) | El sistema funciona sin ellos; los campos son opcionales |
-| `transicionDif` feature incompleta | Ninguno | La pantalla de cambio de dificultad nunca se muestra, es `null` constante |
-| Imágenes en preguntas (`imagen_url`) | Bajo | Columna existe en BD, ninguna pregunta tiene URL aún |
+| RLS deshabilitado en Supabase | Seguridad alta | `supabase-policies.sql` listo, falta ejecutar |
+| 2 preguntas nivel 3 mencionan PUC colombiano | Bajo | SQL de fix pendiente de ejecutar |
+| Logros sin columnas en BD (`max_combo`, etc.) | Bajo | Funciona con `?? 0`, columnas opcionales |
+| `transicionDif` feature incompleta | Ninguno | Siempre `null`, placeholder futuro |
+| Imágenes en preguntas (`imagen_url`) | Bajo | Columna existe, ninguna pregunta tiene URL |
 
 ---
 
@@ -75,40 +82,37 @@
 
 **Stack:** Next.js 16 · React 19 · Tailwind CSS v4 · Supabase · Web Audio API · Web Speech API
 
+**Deploy:** contalearn.vercel.app · GitHub: Manuko18/contalearn (rama `main`)
+
 ```
 app/
   page.jsx              Dashboard principal
+  layout.jsx            Layout raíz (AmbientProvider aquí)
   login/page.jsx        Login + Registro
   niveles/page.jsx      Mapa de niveles
   lecciones/page.jsx    Motor del juego (archivo más grande)
   ranking/page.jsx      Tabla de posiciones
-  globals.css           Tema, colores CSS y todas las animaciones
 
 components/
-  Mascota.jsx           Conti Core SVG (evolutivo por XP)
+  AmbientProvider.jsx   Ambient global (montado en layout)
+  Mascota.jsx           Conti Core SVG evolutivo
   Navbar.jsx            Navegación glassmorphism
-  FondoDinamico.jsx     Canvas reactivo (fondo)
-  PageTransition.jsx    Fade+slide entre páginas
-  LoadingConti.jsx      Pantalla de carga premium
-  EpicMoment.jsx        Overlay cinematográfico de eventos
+  FondoDinamico.jsx     Canvas reactivo
+  EpicMoment.jsx        Overlay cinematográfico
   AchievementToast.jsx  Toast de logros con cola
-  Particles.jsx         Sistema de partículas
 
 lib/
-  supabaseClient.js     Cliente Supabase
-  audio.js              Todos los sonidos (Web Audio API)
-  ambient.js            Sonido ambiente 4 capas
-  achievements.js       12 logros, rareza, localStorage
+  audio.js              Sonidos UI (Web Audio API)
+  ambient.js            Lo-fi gaming arpeggio (singleton)
+  achievements.js       12 logros, localStorage
   particles.js          7 presets de partículas
-  rankTheme.js          Temas visuales por rango
-  motion.js             Constantes de animación centralizadas
-  frases.js             Frases contextuales del búho
-  
-supabase-policies.sql   SQL de RLS y constraints (pendiente aplicar)
+
+seed-niveles-3-4-5.sql  Contenido niveles 3/4/5 (ya ejecutado)
+supabase-policies.sql   RLS pendiente de ejecutar
 ```
 
-**BD (Supabase):** `users` · `niveles` · `lecciones` · `progreso_usuario` · `misiones_diarias`
+**BD:** `users` · `niveles` · `lecciones` · `progreso_usuario` · `misiones_diarias`
 
-**Variables de entorno:** `NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+**Columnas lecciones usadas:** `nivel_id` · `orden` · `tipo_ejercicio` · `dificultad` · `contenido_json`
 
-**Dev local:** `npm run dev` → localhost:3000 | ngrok para exponer externamente
+**Columnas niveles usadas:** `titulo` · `descripcion` · `emoji` · `orden` · `teoria_json`
