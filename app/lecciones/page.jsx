@@ -72,6 +72,7 @@ function LeccionInner() {
   const [curAch, setCurAch]           = useState(null)
   const timerRef = useRef(null)
   const audioRef = useRef(null)
+  const vozActivaRef = useRef(false)
 
 
   useEffect(() => {
@@ -122,20 +123,17 @@ function LeccionInner() {
 
   // Cancelar voz al desmontar el componente (navegar a otra página)
   useEffect(() => {
-    return () => { window.speechSynthesis?.cancel() }
+    return () => detenerVozGlobal()
   }, [])
 
   // Seguro: cancelar voz en el instante que cambia a fase juego
   useEffect(() => {
-    if (fase === "juego") {
-      window.speechSynthesis?.cancel()
-      if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null
-    }
+    if (fase === "juego") detenerVozGlobal()
   }, [fase])
 
-  // Cancelar voz cuando se quedan sin vidas (PantallaFin no desmonta el componente)
+  // Cancelar voz cuando se quedan sin vidas
   useEffect(() => {
-    if (vidas <= 0) window.speechSynthesis?.cancel()
+    if (vidas <= 0) detenerVozGlobal()
   }, [vidas])
 
   // Hablar al cambiar slide de teoría
@@ -153,10 +151,7 @@ function LeccionInner() {
     } else {
       window.speechSynthesis.onvoiceschanged = () => { ejecutarVoz(); window.speechSynthesis.onvoiceschanged = null }
     }
-    return () => {
-      window.speechSynthesis?.cancel()
-      if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null
-    }
+    return () => detenerVozGlobal()
   }, [slideTeoria, fase, nivel])
 
   useEffect(() => {
@@ -182,19 +177,28 @@ function LeccionInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indice, fase, estado])
 
-  // function declaration → hoisted; disponible en los useEffects declarados antes en el código
+  // Sin setState — segura para llamar desde cleanups de useEffect y unmount
+  function detenerVozGlobal() {
+    if (!window.speechSynthesis) return
+    vozActivaRef.current = false
+    window.speechSynthesis.onvoiceschanged = null
+    window.speechSynthesis.pause()
+    window.speechSynthesis.cancel()
+  }
+
   function hablar(texto) {
     if (!window.speechSynthesis) return
+    vozActivaRef.current = true
+    window.speechSynthesis.pause()
     window.speechSynthesis.cancel()
     setPalabraActual(-1)
 
     const u = new SpeechSynthesisUtterance(texto)
     u.lang = "es-ES"
-    u.rate = 0.88       // Natural, ni muy lento ni muy rápido
-    u.pitch = 1.0       // Tono neutro, menos robótico
+    u.rate = 0.88
+    u.pitch = 1.0
     u.volume = 1
 
-    // Priorizar Google español (más natural), luego Microsoft
     const voces = window.speechSynthesis.getVoices()
     const voz = voces.find(v => v.name.includes("Google") && v.lang.startsWith("es")) ||
                 voces.find(v => v.name === "Microsoft Sabina - Spanish (Mexico)") ||
@@ -203,21 +207,29 @@ function LeccionInner() {
                 voces.find(v => v.lang.startsWith("es"))
     if (voz) u.voice = voz
 
-    // Sincronizar palabra por palabra
     u.onboundary = (e) => {
       if (e.name === "word") {
         const palabraIdx = texto.substring(0, e.charIndex).split(" ").length - 1
         setPalabraActual(palabraIdx)
       }
     }
-    u.onstart = () => setHablandoVoz(true)
-    u.onend = () => { setHablandoVoz(false); setPalabraActual(-1) }
-    u.onerror = () => { setHablandoVoz(false); setPalabraActual(-1) }
+    // Si para cuando arranca ya no debería hablar, cancelar inmediatamente
+    u.onstart = () => {
+      if (!vozActivaRef.current) { window.speechSynthesis.pause(); window.speechSynthesis.cancel(); return }
+      setHablandoVoz(true)
+    }
+    u.onend = () => { setHablandoVoz(false); setPalabraActual(-1); vozActivaRef.current = false }
+    u.onerror = () => { setHablandoVoz(false); setPalabraActual(-1); vozActivaRef.current = false }
     window.speechSynthesis.speak(u)
-  } // end hablar
+  }
 
   function detenerVoz() {
-    window.speechSynthesis?.cancel()
+    vozActivaRef.current = false
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = null
+      window.speechSynthesis.pause()
+      window.speechSynthesis.cancel()
+    }
     setHablandoVoz(false)
     setPalabraActual(-1)
   }
