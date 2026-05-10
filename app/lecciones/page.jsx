@@ -35,7 +35,7 @@ function LeccionInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const nivelId = searchParams.get("nivel")
-  const dificultadParam = parseInt(searchParams.get("dificultad") || "0")
+  const dificultadParam = 0
 
   const [user, setUser] = useState(null)
   const [nivel, setNivel] = useState(null)
@@ -48,8 +48,7 @@ function LeccionInner() {
   const [xpGanado, setXpGanado] = useState(0)
   const [vidas, setVidas] = useState(5)
   const [loading, setLoading] = useState(true)
-  // Si es sub-nivel 2,3,4 ir directo al juego (la teoría ya la vieron en Junior)
-  const [fase, setFase] = useState(dificultadParam > 1 ? "juego" : "teoria")
+  const [fase, setFase] = useState("teoria")
   const [hablandoVoz, setHablandoVoz] = useState(false)
   const [palabraActual, setPalabraActual] = useState(-1)
   const [tiempo, setTiempo] = useState(TIEMPO_POR_PREGUNTA)
@@ -74,12 +73,6 @@ function LeccionInner() {
   const timerRef = useRef(null)
   const audioRef = useRef(null)
 
-  const DIFICULTADES = {
-    1: { nombre: "Junior",       color: "#4ade80", emoji: "🟢" },
-    2: { nombre: "Semi-Junior",  color: "#60a5fa", emoji: "🔵" },
-    3: { nombre: "Semi-Senior",  color: "#c084fc", emoji: "🟣" },
-    4: { nombre: "Senior",       color: "#f87171", emoji: "🔴" },
-  }
 
   useEffect(() => {
     const cargar = async () => {
@@ -105,16 +98,11 @@ function LeccionInner() {
       }
 
       setNivel(nivelData)
-      // Si viene con dificultad específica, filtrar solo esas preguntas
-      const todas = leccionesData || []
-      const filtradas = dificultadParam > 0
-        ? todas.filter(l => (l.dificultad || 1) === dificultadParam)
-        : todas
-      setLecciones(mezclar(filtradas))
+      setLecciones(mezclar(leccionesData || []))
       setLoading(false)
     }
     cargar()
-  }, [router, nivelId, dificultadParam])
+  }, [router, nivelId])
 
   // Opciones mezcladas derivadas de la lección actual (useMemo evita estado+efecto extra)
   const opcionesMezcladas = useMemo(() => {
@@ -641,7 +629,6 @@ function LeccionInner() {
   const pct = (indice / lecciones.length) * 100
   const tiempoPct = (tiempo / TIEMPO_POR_PREGUNTA) * 100
   const tiempoColor = tiempo > 15 ? "var(--color-primary)" : tiempo > 7 ? "var(--color-warning)" : "var(--color-danger)"
-  const difActual = DIFICULTADES[leccion.dificultad || 1]
 
   return (
     <div className={`min-h-screen flex flex-col ${animacion === "correcto" ? "animate-pop-in" : animacion === "incorrecto" ? "animate-shake" : ""}`} style={{ background: "transparent" }}>
@@ -733,13 +720,6 @@ function LeccionInner() {
         </div>
       </div>
 
-      {/* Badge dificultad */}
-      <div className="px-4 max-w-2xl mx-auto w-full mb-1">
-        <span className="text-xs font-extrabold px-3 py-1 rounded-full"
-          style={{ background: difActual.color + "22", color: difActual.color, border: `1px solid ${difActual.color}55` }}>
-          {difActual.emoji} {difActual.nombre}
-        </span>
-      </div>
 
       {/* Temporizador */}
       <div className="px-4 max-w-2xl mx-auto w-full mb-2">
