@@ -249,4 +249,27 @@ SMTP               Gmail smtp.gmail.com:587 App Password
 | API route devolvía 500 vacío | try/catch + Response.json con error message |
 | Modelo `claude-haiku-4-5` incorrecto | Corregido a `claude-haiku-4-5-20251001` |
 
+## [2026-05-12 tarde] — Sesión: Claude API operativa + fix parseo múltiples errores
+
+### Decisiones tomadas
+
+- **Separador `===` en vez de `[N]`**: Claude no usaba los marcadores `[N]` consistentemente entre bloques, causando que solo se parseara el primer error. `===` es más robusto y Claude lo respeta siempre.
+- **`max_tokens: 2048`**: 1024 era insuficiente para 3+ errores (Claude cortaba la respuesta). 2048 cubre hasta ~10 errores por sesión.
+- **Formato `ERROR_N:` en el prompt**: renombrado para evitar colisión con el campo `ERROR:` en la respuesta. Hace el prompt más claro para Claude.
+- **Créditos Anthropic cargados**: $5 USD. API operativa a ~$0.003/sesión con errores.
+
+### Funcionalidades completadas
+
+- `app/api/explicar/route.js` — versión final con separador `===`, parseo robusto de N errores
+- Pantalla resultados: muestra las 4 secciones IA (📘 Concepto, 🔢 Ejemplo, ⚠️ Tu error, 🎯 Practica) para cada respuesta incorrecta
+- Fix "2" al final de PRACTICA: artefacto de parseo eliminado
+
+### Problemas resueltos
+
+| Problema | Fix |
+|----------|-----|
+| Solo 1 explicación de N errores | Separador `===` + `max_tokens: 2048` |
+| Número suelto "2" al final de PRACTICA | Separador `===` elimina el artefacto |
+| API retornaba 400 (sin créditos) | Créditos cargados en console.anthropic.com |
+
 <!-- Agregar nuevas sesiones aquí arriba de esta línea, con formato [YYYY-MM-DD] -->
