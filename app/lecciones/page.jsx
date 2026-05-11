@@ -354,7 +354,17 @@ function LeccionInner() {
       preguntasRespRef.current += 1
       const nuevasVidas = modoTest ? vidas : Math.max(vidas - 1, 0)
       setVidas(nuevasVidas)
-      if (!modoTest) await supabase.from("users").update({ vidas: nuevasVidas, ultima_vida_recargada: new Date().toISOString() }).eq("id", user.id)
+      if (!modoTest) {
+        await supabase.from("users").update({ vidas: nuevasVidas, ultima_vida_recargada: new Date().toISOString() }).eq("id", user.id)
+        await supabase.from("user_mistakes").insert([{
+          user_id: user.id,
+          nivel_id: nivelId,
+          leccion_id: leccion.id,
+          pregunta: c.pregunta || c.enunciado || "",
+          tu_respuesta: mostrarRespuesta(respuesta),
+          respuesta_correcta: mostrarRespuesta(c.respuesta_correcta),
+        }])
+      }
     }
 
     setResultados(prev => [...prev, {
@@ -465,14 +475,24 @@ function LeccionInner() {
       const errores = resultados.filter(r => !r.correcta && r.pregunta)
       if (errores.length > 0) {
         setCargandoIA(true)
-        fetch("/api/explicar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ errores, nivel: nivel?.titulo }),
-        })
-          .then(r => r.json())
-          .then(({ explicaciones }) => setExplicacionesIA(explicaciones || []))
-          .finally(() => setCargandoIA(false))
+        // Traer historial de errores previos de este nivel
+        supabase
+          .from("user_mistakes")
+          .select("pregunta, tu_respuesta, respuesta_correcta, created_at")
+          .eq("user_id", user.id)
+          .eq("nivel_id", nivelId)
+          .order("created_at", { ascending: false })
+          .limit(20)
+          .then(({ data: historial }) => {
+            fetch("/api/explicar", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ errores, nivel: nivel?.titulo, historial: historial || [] }),
+            })
+              .then(r => r.json())
+              .then(({ explicaciones }) => setExplicacionesIA(explicaciones || []))
+              .finally(() => setCargandoIA(false))
+          })
       }
     } else {
       setIndice(i => i + 1)

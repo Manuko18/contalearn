@@ -4,7 +4,7 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function POST(req) {
   try {
-    const { errores, nivel } = await req.json()
+    const { errores, nivel, historial = [] } = await req.json()
 
     if (!errores?.length) {
       return Response.json({ explicaciones: [] })
@@ -14,12 +14,16 @@ export async function POST(req) {
       `ERROR_${i + 1}:\nPregunta: "${e.pregunta}"\nEstudiante respondió: "${e.tuRespuesta}"\nRespuesta correcta: "${e.respuestaCorrecta}"`
     ).join("\n\n")
 
+    const contextoHistorial = historial.length > 0
+      ? `\n\nHISTORIAL DE ERRORES PREVIOS DEL ESTUDIANTE EN ESTE NIVEL (últimas sesiones):\n${historial.map(h => `- "${h.pregunta}" → respondió "${h.tu_respuesta}" (correcto: "${h.respuesta_correcta}")`).join("\n")}\n\nSi ves un patrón de error repetido, menciónalo en el campo PRACTICA.`
+      : ""
+
     const { content } = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 2048,
       messages: [{
         role: "user",
-        content: `Eres un tutor de contabilidad para Ecuador. Analiza estos ${errores.length} errores.
+        content: `Eres un tutor de contabilidad para Ecuador. Analiza estos ${errores.length} errores.${contextoHistorial}
 
 ${listaErrores}
 
