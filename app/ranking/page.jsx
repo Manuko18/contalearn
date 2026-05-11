@@ -39,7 +39,7 @@ export default function RankingPage() {
       setMiId(user.id)
       const { data } = await supabase
         .from("users")
-        .select("id, email, username, xp_total, racha_actual")
+        .select("id, email, username, xp_total, racha_actual, titulo_empresa")
         .order("xp_total", { ascending: false })
         .limit(50)
       setJugadores(data || [])
@@ -210,6 +210,9 @@ export default function RankingPage() {
                     </p>
                     <p className="text-xs text-zinc-500">
                       {rango.emoji} {rango.nombre} · 🔥 {jugador.racha_actual || 0} días
+                      {jugador.titulo_empresa && (
+                        <span className="ml-1.5 text-yellow-400 font-semibold">{jugador.titulo_empresa}</span>
+                      )}
                     </p>
                   </div>
 

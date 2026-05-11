@@ -426,6 +426,13 @@ export default function Home() {
                   onClick={() => router.push("/ranking")}
                   color="var(--color-warning)"
                 />
+                <QuickBtn
+                  icon="🏢"
+                  label="Modo Empresa"
+                  sub="Distribuidora Andes S.A."
+                  onClick={() => router.push("/empresa")}
+                  color="#eab308"
+                />
               </div>
             </div>
 
