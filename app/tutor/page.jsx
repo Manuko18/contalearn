@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "../../lib/supabaseClient"
 import Navbar from "../../components/Navbar"
@@ -13,7 +13,7 @@ const PREGUNTAS_RAPIDAS = [
   { icon: "📝", texto: "¿Cómo se aplica esto en la vida real de una empresa?" },
 ]
 
-export default function TutorPage() {
+function TutorInner() {
   const router = useRouter()
   const params = useSearchParams()
   const nivelId = params.get("nivel")
@@ -258,5 +258,13 @@ export default function TutorPage() {
         }
       `}</style>
     </div>
+  )
+}
+
+export default function TutorPage() {
+  return (
+    <Suspense fallback={<LoadingConti texto="Cargando tutor..." />}>
+      <TutorInner />
+    </Suspense>
   )
 }
