@@ -227,6 +227,20 @@ export default function NivelesPage() {
                                 >
                                   🤖
                                 </button>
+                                {progreso?.completo && (
+                                  <button
+                                    onClick={() => router.push(`/practica?nivel=${nivel.id}`)}
+                                    className="py-2.5 px-3 rounded-xl font-bold text-sm transition-all duration-200"
+                                    style={{
+                                      background: "rgba(124,58,237,0.15)",
+                                      color: "#c084fc",
+                                      border: "1.5px solid rgba(124,58,237,0.4)",
+                                    }}
+                                    title="Práctica extra con IA"
+                                  >
+                                    🎯
+                                  </button>
+                                )}
                               </div>
                             </>
                           )}

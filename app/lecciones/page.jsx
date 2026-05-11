@@ -713,17 +713,26 @@ function LeccionInner() {
             })()}
           </div>
 
-          <div className="flex gap-3">
-            <button onClick={() => { setFase("teoria"); setIndice(0); setResultados([]); setXpGanado(0); setLecciones(mezclar(lecciones)) }}
-              className="flex-1 rounded-2xl py-3 font-bold transition-all"
-              style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "#9ca3af" }}>
-              🔄 Repetir
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => router.push(`/practica?nivel=${nivelId}`)}
+              className="w-full rounded-2xl py-3 font-extrabold text-white transition-all active:scale-95"
+              style={{ background: "rgba(124,58,237,0.8)", border: "1.5px solid rgba(124,58,237,0.6)", boxShadow: "0 4px 0 rgba(109,40,217,0.6)" }}
+            >
+              🎯 Practica más con IA
             </button>
-            <button onClick={() => router.push("/niveles")}
-              className="flex-1 rounded-2xl py-3 font-extrabold text-white transition-all active:scale-95"
-              style={{ background: "var(--color-primary)", boxShadow: "0 4px 0 var(--color-primary-dark)" }}>
-              Ver niveles
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => { setFase("teoria"); setIndice(0); setResultados([]); setXpGanado(0); setLecciones(mezclar(lecciones)) }}
+                className="flex-1 rounded-2xl py-3 font-bold transition-all"
+                style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "#9ca3af" }}>
+                🔄 Repetir
+              </button>
+              <button onClick={() => router.push("/niveles")}
+                className="flex-1 rounded-2xl py-3 font-extrabold text-white transition-all active:scale-95"
+                style={{ background: "var(--color-primary)", boxShadow: "0 4px 0 var(--color-primary-dark)" }}>
+                Ver niveles
+              </button>
+            </div>
           </div>
         </div>
       </div>
