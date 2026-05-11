@@ -202,18 +202,32 @@ export default function NivelesPage() {
                                   {progreso.completadas}/{progreso.total} preguntas completadas
                                 </p>
                               </div>
-                              <button
-                                onClick={() => router.push(`/lecciones?nivel=${nivel.id}`)}
-                                className="w-full py-2.5 rounded-xl font-extrabold text-sm transition-all duration-200"
-                                style={{
-                                  background: progreso?.completo ? color.glow + "22" : color.glow,
-                                  color: progreso?.completo ? color.icon : "#000",
-                                  border: `1.5px solid ${color.glow}`,
-                                  boxShadow: `0 0 12px ${color.glow}44`,
-                                }}
-                              >
-                                {progreso?.completo ? "✅ Completado — Repasar" : pct > 0 ? "▶ Continuar" : "▶ Jugar"}
-                              </button>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => router.push(`/lecciones?nivel=${nivel.id}`)}
+                                  className="flex-1 py-2.5 rounded-xl font-extrabold text-sm transition-all duration-200"
+                                  style={{
+                                    background: progreso?.completo ? color.glow + "22" : color.glow,
+                                    color: progreso?.completo ? color.icon : "#000",
+                                    border: `1.5px solid ${color.glow}`,
+                                    boxShadow: `0 0 12px ${color.glow}44`,
+                                  }}
+                                >
+                                  {progreso?.completo ? "✅ Repasar" : pct > 0 ? "▶ Continuar" : "▶ Jugar"}
+                                </button>
+                                <button
+                                  onClick={() => router.push(`/tutor?nivel=${nivel.id}`)}
+                                  className="py-2.5 px-3 rounded-xl font-bold text-sm transition-all duration-200"
+                                  style={{
+                                    background: "rgba(37,99,235,0.15)",
+                                    color: "#60a5fa",
+                                    border: "1.5px solid rgba(37,99,235,0.4)",
+                                  }}
+                                  title="Preguntar al Tutor IA"
+                                >
+                                  🤖
+                                </button>
+                              </div>
                             </>
                           )}
 
