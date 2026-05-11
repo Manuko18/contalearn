@@ -157,7 +157,7 @@ function PracticaInner() {
                 }}
               >
                 <p className="text-xs font-bold uppercase tracking-widest text-purple-400 mb-3">
-                  Pregunta generada por IA
+                  Ejercicio de práctica
                 </p>
                 <p className="text-white font-semibold text-base leading-relaxed">
                   {ejercicio.pregunta}
