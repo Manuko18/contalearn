@@ -111,7 +111,7 @@ export async function POST(req) {
     // tipo viene del cliente (orden aleatorio por sesión); fallback al patrón fijo
     const tipo = TIPOS.includes(tipoParam) ? tipoParam : TIPOS[angulo % TIPOS.length]
 
-    const MAX_POR_DIFICULTAD = 10
+    const MAX_POR_DIFICULTAD = 20
 
     // Contar total en banco para este nivel+dificultad
     const { count: totalBanco } = await supabase
