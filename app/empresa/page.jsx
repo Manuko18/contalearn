@@ -41,7 +41,10 @@ function EmpresaInner() {
 
   const [mesActivo, setMesActivo] = useState(null)
   const [correctasMes, setCorrectasMes] = useState(0)
-  const [preguntasVistasIds, setPreguntasVistasIds] = useState([])
+  const [preguntasVistasIds, setPreguntasVistasIds] = useState(() => {
+    if (typeof window === "undefined") return []
+    try { return JSON.parse(localStorage.getItem("empresa_vistas") || "[]") } catch { return [] }
+  })
   const [preguntaActivaId, setPreguntaActivaId] = useState(null)
   const [reportado, setReportado] = useState(false)
 
@@ -71,6 +74,7 @@ function EmpresaInner() {
   const cambiarMes = (nuevoMes) => {
     setMesActivo(nuevoMes)
     setPreguntasVistasIds([])
+    localStorage.removeItem("empresa_vistas")
     setCorrectasMes(0)
     generarCasoConMes(nuevoMes)
   }
@@ -98,7 +102,11 @@ function EmpresaInner() {
         setMesNombre(data.mes)
         setPreguntaActivaId(data.id || null)
         setReportado(false)
-        if (data.id) setPreguntasVistasIds(prev => [...prev, data.id])
+        if (data.id) setPreguntasVistasIds(prev => {
+          const nuevas = [...prev, data.id]
+          localStorage.setItem("empresa_vistas", JSON.stringify(nuevas))
+          return nuevas
+        })
       }
     } catch {
       setCaso(null)
