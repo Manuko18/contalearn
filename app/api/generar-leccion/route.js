@@ -7,16 +7,33 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
+const ANGULOS = [
+  "Pregunta sobre la DEFINICIÓN o concepto principal del tema.",
+  "Pregunta con un EJEMPLO PRÁCTICO o caso numérico concreto (usa montos en USD).",
+  "Pregunta que COMPARE o distinga entre dos conceptos relacionados del tema.",
+  "Pregunta sobre una NORMA, artículo o reglamento específico (SRI, NIC, NIIF, Código Tributario).",
+  "Pregunta que identifique un ERROR COMÚN o concepto erróneo frecuente en este tema.",
+]
+
 export async function POST(req) {
   try {
     const { nivelId, teoriaJson, preguntasVistasIds = [], preguntasEnSesion = [], dificultad = "normal", angulo = 0 } = await req.json()
 
-    // 1. Buscar en banco: misma dificultad, no vistas
+    // Asignar slide específico según ángulo — cada pregunta cubre un slide diferente
+    const allSlides = teoriaJson || []
+    const slideIdx = allSlides.length > 0 ? angulo % allSlides.length : 0
+    const slideActual = allSlides[slideIdx]
+    const slideTema = slideActual
+      ? `${slideActual.titulo}: ${slideActual.contenido}`
+      : allSlides.map(s => `${s.titulo}: ${s.contenido}`).join("\n\n")
+
+    // 1. Buscar en banco: mismo slide, misma dificultad, no vistas
     let query = supabase
       .from("nivel_preguntas")
       .select("*")
       .eq("nivel_id", nivelId)
       .eq("dificultad", dificultad)
+      .eq("slide_idx", slideIdx)
     if (preguntasVistasIds.length > 0) {
       query = query.not("id", "in", `(${preguntasVistasIds.join(",")})`)
     }
@@ -36,12 +53,13 @@ export async function POST(req) {
       })
     }
 
-    // 2. No hay en banco — leer preguntas existentes para evitar duplicados
+    // 2. No hay en banco — leer existentes del mismo slide para evitar duplicados
     const { data: existentes } = await supabase
       .from("nivel_preguntas")
       .select("pregunta")
       .eq("nivel_id", nivelId)
       .eq("dificultad", dificultad)
+      .eq("slide_idx", slideIdx)
       .limit(30)
 
     const todasAEvitar = [
@@ -49,41 +67,31 @@ export async function POST(req) {
       ...preguntasEnSesion,
     ]
     const evitar = todasAEvitar.length > 0
-      ? `\n\nDEBES generar una pregunta COMPLETAMENTE DIFERENTE a estas (ni el mismo concepto ni parecida):\n${todasAEvitar.map(q => `- ${q}`).join("\n")}`
+      ? `\n\nDEBES generar una pregunta COMPLETAMENTE DIFERENTE a estas:\n${todasAEvitar.map(q => `- ${q}`).join("\n")}`
       : ""
-
-    const slides = (teoriaJson || [])
-      .map(s => `${s.titulo}: ${s.contenido}`)
-      .join("\n\n")
 
     const nivelDificultad =
       dificultad === "facil"   ? "FÁCIL — conceptos básicos y directos, sin ambigüedad" :
       dificultad === "dificil" ? "DIFÍCIL — aplicación de normas, casos con múltiples pasos o situaciones ambiguas" :
                                  "NORMAL — comprensión y aplicación básica del concepto"
 
-    const angulos = [
-      "Pregunta sobre la DEFINICIÓN o concepto principal del tema.",
-      "Pregunta con un EJEMPLO PRÁCTICO o caso numérico concreto (usa montos en USD).",
-      "Pregunta que COMPARE o distinga entre dos conceptos relacionados del tema.",
-      "Pregunta sobre una NORMA, artículo o reglamento específico (SRI, NIC, NIIF, Código Tributario).",
-      "Pregunta que identifique un ERROR COMÚN o concepto erróneo frecuente en este tema.",
-    ]
-    const tipoAngulo = angulos[angulo % angulos.length]
+    const tipoAngulo = ANGULOS[angulo % ANGULOS.length]
 
     const { content } = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
       messages: [{
         role: "user",
-        content: `Eres un experto en contabilidad ecuatoriana. Genera una pregunta de evaluación basada en esta teoría:
+        content: `Eres un experto en contabilidad ecuatoriana. Genera una pregunta de evaluación sobre este tema específico:
 
-${slides}
+${slideTema}
 
 Dificultad: ${nivelDificultad}
 Tipo de pregunta OBLIGATORIO: ${tipoAngulo}${evitar}
 
-Pasos obligatorios antes de responder:
-- Sigue ESTRICTAMENTE el tipo de pregunta indicado arriba.
+Pasos obligatorios:
+- La pregunta debe ser EXCLUSIVAMENTE sobre el tema indicado arriba.
+- Sigue ESTRICTAMENTE el tipo de pregunta indicado.
 - Define la respuesta correcta según normativa ecuatoriana (SRI, NIC, NIIF).
 - La explicacion justifica exactamente por qué esa es la respuesta correcta.
 - Crea 3 opciones incorrectas plausibles pero erróneas.
@@ -108,7 +116,7 @@ Responde SOLO con este JSON, sin texto extra:
     if (!jsonMatch) throw new Error("Respuesta no es JSON válido")
     const p = JSON.parse(jsonMatch[0])
 
-    // 3. Guardar en banco con dificultad
+    // 3. Guardar en banco con slide_idx y dificultad
     const { data: nueva } = await supabase
       .from("nivel_preguntas")
       .insert([{
@@ -118,6 +126,7 @@ Responde SOLO con este JSON, sin texto extra:
         respuesta_correcta: p.respuesta_correcta,
         explicacion: p.explicacion,
         dificultad,
+        slide_idx: slideIdx,
       }])
       .select("id")
       .single()
