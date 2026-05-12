@@ -1,0 +1,92 @@
+import Anthropic from "@anthropic-ai/sdk"
+import { createClient } from "@supabase/supabase-js"
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+)
+
+export async function POST(req) {
+  try {
+    const { nivelId, teoriaJson, preguntasVistasIds = [] } = await req.json()
+
+    // 1. Buscar en banco preguntas no vistas
+    let query = supabase.from("nivel_preguntas").select("*").eq("nivel_id", nivelId)
+    if (preguntasVistasIds.length > 0) {
+      query = query.not("id", "in", `(${preguntasVistasIds.join(",")})`)
+    }
+    const { data: guardadas } = await query.limit(30)
+
+    if (guardadas && guardadas.length > 0) {
+      const p = guardadas[Math.floor(Math.random() * guardadas.length)]
+      return Response.json({
+        pregunta: {
+          id: p.id,
+          pregunta: p.pregunta,
+          opciones: p.opciones.sort(() => Math.random() - 0.5),
+          respuesta_correcta: p.respuesta_correcta,
+          explicacion: p.explicacion,
+        },
+        fromCache: true,
+      })
+    }
+
+    // 2. No hay en banco — generar con Haiku basado en la teoría del nivel
+    const slides = (teoriaJson || [])
+      .map(s => `${s.titulo}: ${s.contenido}`)
+      .join("\n\n")
+
+    const { content } = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 1024,
+      messages: [{
+        role: "user",
+        content: `Eres un experto en contabilidad ecuatoriana. Genera una pregunta de evaluación basada en esta teoría contable:
+
+${slides}
+
+Pasos obligatorios antes de responder:
+- La pregunta debe evaluar un concepto específico de la teoría anterior.
+- Define la respuesta correcta según normativa ecuatoriana (SRI, NIC, NIIF).
+- La explicacion debe justificar exactamente por qué esa es la respuesta correcta.
+- Crea 3 opciones incorrectas plausibles pero claramente erróneas.
+
+Responde SOLO con este JSON, sin texto extra:
+{
+  "pregunta": "pregunta de evaluación (usa USD y contexto ecuatoriano si aplica)",
+  "opciones": ["opción correcta", "incorrecta 1", "incorrecta 2", "incorrecta 3"],
+  "respuesta_correcta": "debe ser idéntica a opciones[0]",
+  "explicacion": "justificación breve de por qué esa opción es correcta (máx 2 líneas)"
+}`,
+      }],
+    })
+
+    const texto = content[0].text.trim()
+    const jsonMatch = texto.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) throw new Error("Respuesta no es JSON válido")
+    const p = JSON.parse(jsonMatch[0])
+
+    // 3. Guardar en banco para futuros usuarios
+    const { data: nueva } = await supabase
+      .from("nivel_preguntas")
+      .insert([{
+        nivel_id: nivelId,
+        pregunta: p.pregunta,
+        opciones: p.opciones,
+        respuesta_correcta: p.respuesta_correcta,
+        explicacion: p.explicacion,
+      }])
+      .select("id")
+      .single()
+
+    p.opciones = p.opciones.sort(() => Math.random() - 0.5)
+    return Response.json({
+      pregunta: { id: nueva?.id, ...p },
+      fromCache: false,
+    })
+  } catch (err) {
+    console.error("Error en /api/generar-leccion:", err?.message || err)
+    return Response.json({ error: err?.message }, { status: 500 })
+  }
+}

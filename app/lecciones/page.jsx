@@ -67,6 +67,7 @@ function LeccionInner() {
   const vidasInicialesRef = useRef(5)
   const preguntasRespRef  = useRef(0)   // preguntas respondidas (correcto + incorrecto)
   const xpSesionRef     = useRef(0)     // XP real ganado esta sesión (solo primeras veces)
+  const [cargandoJuego, setCargandoJuego] = useState(false)
   const [botonListo, setBotonListo] = useState(false)
   const [botonFill, setBotonFill] = useState(0)
   const [showFloatXP, setShowFloatXP] = useState(false)
@@ -88,10 +89,9 @@ function LeccionInner() {
       if (!nivelId) { router.push("/niveles"); return }
       setUser(user)
 
-      const [{ data: nivelData }, { data: perfil }, { data: leccionesData }] = await Promise.all([
+      const [{ data: nivelData }, { data: perfil }] = await Promise.all([
         supabase.from("niveles").select("*").eq("id", nivelId).single(),
         supabase.from("users").select("xp_total, vidas").eq("id", user.id).maybeSingle(),
-        supabase.from("lecciones").select("*").eq("nivel_id", nivelId).order("orden", { ascending: true }),
       ])
 
       if (!perfil) {
@@ -105,7 +105,6 @@ function LeccionInner() {
       }
 
       setNivel(nivelData)
-      setLecciones(mezclar(leccionesData || []))
       setLoading(false)
     }
     cargar()
@@ -293,6 +292,41 @@ function LeccionInner() {
     await supabase.from("users").update({ racha_actual: nuevaRacha, ultima_leccion_fecha: hoy }).eq("id", user.id)
   }
 
+  const cargarPreguntasIA = async () => {
+    setCargandoJuego(true)
+    const TOTAL = 5
+    const results = await Promise.allSettled(
+      Array.from({ length: TOTAL }, () =>
+        fetch("/api/generar-leccion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nivelId,
+            teoriaJson: nivel?.teoria_json || [],
+            preguntasVistasIds: [],
+          }),
+        }).then(r => r.json())
+      )
+    )
+    const pqs = results
+      .filter(r => r.status === "fulfilled" && r.value?.pregunta)
+      .map(r => ({
+        id: `ia_${r.value.pregunta.id ?? Math.random()}`,
+        bancoId: r.value.pregunta.id ?? null,
+        esIA: true,
+        tipo_ejercicio: "multiple_choice",
+        contenido_json: {
+          pregunta: r.value.pregunta.pregunta,
+          opciones: r.value.pregunta.opciones,
+          respuesta_correcta: r.value.pregunta.respuesta_correcta,
+          explicacion_error: r.value.pregunta.explicacion,
+        },
+      }))
+    setLecciones(mezclar(pqs.length > 0 ? pqs : []))
+    setCargandoJuego(false)
+    setFase("juego")
+  }
+
   const verificar = async () => {
     if (!respuesta) return
     clearInterval(timerRef.current)
@@ -324,27 +358,14 @@ function LeccionInner() {
         setEpicEvent({ type: "comboMax", data: { title: `COMBO ×${nuevoCombo}` } })
       }
       await actualizarRacha()
-      // Anti-farmeo: solo dar XP si esta lección no estaba ya completada
-      const { data: existe } = await supabase
-        .from("progreso_usuario")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("leccion_id", leccion.id)
-        .maybeSingle()
-      if (!existe) {
-        // Primera vez correcta → insertar progreso y otorgar XP
-        const nuevoXp = xp + 10
-        setXp(nuevoXp)
-        setXpGanado(prev => prev + 10)
-        xpSesionRef.current += 10
-        setShowFloatXP(true)
-        setTimeout(() => setShowFloatXP(false), 950)
-        if (!modoTest) {
-          await supabase.from("users").update({ xp_total: nuevoXp }).eq("id", user.id)
-          await supabase.from("progreso_usuario").insert([{
-            user_id: user.id, leccion_id: leccion.id, completado: true, puntaje: 10,
-          }])
-        }
+      const nuevoXp = xp + 10
+      setXp(nuevoXp)
+      setXpGanado(prev => prev + 10)
+      xpSesionRef.current += 10
+      setShowFloatXP(true)
+      setTimeout(() => setShowFloatXP(false), 950)
+      if (!modoTest) {
+        await supabase.from("users").update({ xp_total: nuevoXp }).eq("id", user.id)
       }
     } else {
       sound.incorrect()
@@ -359,7 +380,7 @@ function LeccionInner() {
         await supabase.from("user_mistakes").insert([{
           user_id: user.id,
           nivel_id: nivelId,
-          leccion_id: leccion.id,
+          leccion_id: leccion.bancoId ?? null,
           pregunta: c.pregunta || c.enunciado || "",
           tu_respuesta: mostrarRespuesta(respuesta),
           respuesta_correcta: mostrarRespuesta(c.respuesta_correcta),
@@ -500,6 +521,7 @@ function LeccionInner() {
   }
 
   if (loading) return <LoadingConti texto="Cargando lección..." />
+  if (cargandoJuego) return <LoadingConti texto="Generando preguntas con IA..." />
   if (vidas <= 0) return <PantallaFin onVolver={() => router.push("/")} />
 
   // ── FASE TEORÍA ──
@@ -585,7 +607,7 @@ function LeccionInner() {
             onClick={() => {
               if (!botonListo) return
               detenerVoz()
-              if (esUltimo) setFase("juego")
+              if (esUltimo) cargarPreguntasIA()
               else setSlideTeoria(s => s + 1)
             }}
             className="flex-2 w-full rounded-2xl py-4 font-extrabold text-white relative overflow-hidden"
@@ -742,7 +764,7 @@ function LeccionInner() {
               🎯 Practica más con IA
             </button>
             <div className="flex gap-2">
-              <button onClick={() => { setFase("teoria"); setIndice(0); setResultados([]); setXpGanado(0); setLecciones(mezclar(lecciones)) }}
+              <button onClick={() => { setFase("teoria"); setSlideTeoria(0); setIndice(0); setResultados([]); setXpGanado(0); setLecciones([]) }}
                 className="flex-1 rounded-2xl py-3 font-bold transition-all"
                 style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "#9ca3af" }}>
                 🔄 Repetir
