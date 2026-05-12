@@ -33,8 +33,14 @@ function EmpresaInner() {
   const [perfil, setPerfil] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const [caso, setCaso] = useState(null)
-  const [mesNombre, setMesNombre] = useState("")
+  const [caso, setCaso] = useState(() => {
+    if (typeof window === "undefined") return null
+    try { return JSON.parse(localStorage.getItem("empresa_caso_actual") || "null") } catch { return null }
+  })
+  const [mesNombre, setMesNombre] = useState(() => {
+    if (typeof window === "undefined") return ""
+    return localStorage.getItem("empresa_mes_nombre") || ""
+  })
   const [generando, setGenerando] = useState(false)
   const [seleccion, setSeleccion] = useState(null)
   const [respondido, setRespondido] = useState(false)
@@ -68,7 +74,7 @@ function EmpresaInner() {
   }, [router])
 
   useEffect(() => {
-    if (!loading && perfil) generarCaso()
+    if (!loading && perfil && !caso) generarCaso()
   }, [loading])
 
   const cambiarMes = (nuevoMes) => {
@@ -86,6 +92,7 @@ function EmpresaInner() {
     setCaso(null)
     setSeleccion(null)
     setRespondido(false)
+    localStorage.removeItem("empresa_caso_actual")
 
     try {
       const res = await fetch("/api/empresa", {
@@ -102,6 +109,8 @@ function EmpresaInner() {
         setMesNombre(data.mes)
         setPreguntaActivaId(data.id || null)
         setReportado(false)
+        localStorage.setItem("empresa_caso_actual", JSON.stringify(data.caso))
+        localStorage.setItem("empresa_mes_nombre", data.mes)
         if (data.id) setPreguntasVistasIds(prev => {
           const nuevas = [...prev, data.id]
           localStorage.setItem("empresa_vistas", JSON.stringify(nuevas))
