@@ -8,7 +8,7 @@ import { supabase } from "../../lib/supabaseClient"
 import Navbar from "../../components/Navbar"
 import LoadingConti from "../../components/LoadingConti"
 
-const ADMIN_EMAIL = "lotor210799@gmail.com"
+const ADMIN_EMAILS = ["lotor210799@gmail.com", "lotor5252@gmail.com"]
 
 export default function AdminPage() {
   const router = useRouter()
@@ -20,7 +20,7 @@ export default function AdminPage() {
   useEffect(() => {
     const cargar = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user || user.email !== ADMIN_EMAIL) {
+      if (!user || !ADMIN_EMAILS.includes(user.email)) {
         router.push("/")
         return
       }
