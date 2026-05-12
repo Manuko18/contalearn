@@ -53,17 +53,19 @@ Enfoque: ${tipoAngulo}${evitar}
 
 Pasos obligatorios:
 - Escribe una oración con un espacio en blanco indicado con _____.
-- La palabra o frase que falta debe ser un término contable clave del tema.
+- La respuesta debe ser UNA SOLA PALABRA o término técnico exacto (sin alternativas, sin "o", sin barras).
+- El espacio debe poder completarse con una única respuesta correcta obvia.
 - La explicacion justifica por qué esa es la respuesta correcta.
 
 Reglas de formato OBLIGATORIAS:
 - La oración completa debe tener máximo 15 palabras.
-- La respuesta correcta debe ser 1-3 palabras (término técnico, no oración).
+- La respuesta_correcta debe ser MÁXIMO 2 PALABRAS, sin alternativas ni sinónimos.
+- NUNCA uses "X o Y", "X / Y" ni múltiples opciones como respuesta.
 
 Responde SOLO con este JSON, sin texto extra:
 {
   "pregunta": "oración con _____ en el lugar de la respuesta (máx 15 palabras)",
-  "respuesta_correcta": "término que va en el espacio (1-3 palabras)",
+  "respuesta_correcta": "una sola palabra o término exacto (máx 2 palabras)",
   "explicacion": "justificación breve (máx 2 líneas)"
 }`
   }
