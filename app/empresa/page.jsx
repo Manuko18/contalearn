@@ -39,6 +39,7 @@ function EmpresaInner() {
   const [seleccion, setSeleccion] = useState(null)
   const [respondido, setRespondido] = useState(false)
 
+  const [mesActivo, setMesActivo] = useState(null) // null = mes actual del usuario
   const [correctasMes, setCorrectasMes] = useState(0)
   const [preguntasVistasIds, setPreguntasVistasIds] = useState([])
 
@@ -65,7 +66,16 @@ function EmpresaInner() {
     if (!loading && perfil) generarCaso()
   }, [loading])
 
-  const generarCaso = async () => {
+  const cambiarMes = (nuevoMes) => {
+    setMesActivo(nuevoMes)
+    setPreguntasVistasIds([])
+    setCorrectasMes(0)
+    generarCasoConMes(nuevoMes)
+  }
+
+  const generarCaso = () => generarCasoConMes(mesActivo ?? perfil?.empresa_mes ?? 0)
+
+  const generarCasoConMes = async (mes) => {
     setGenerando(true)
     setCaso(null)
     setSeleccion(null)
@@ -76,7 +86,7 @@ function EmpresaInner() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mes: perfil?.empresa_mes ?? 0,
+          mes,
           preguntasVistasIds,
         }),
       })
@@ -101,15 +111,18 @@ function EmpresaInner() {
     const esCorrecta = opcion === caso.respuesta_correcta
     if (!esCorrecta) return
 
+    const mesJugando = mesActivo ?? perfil?.empresa_mes ?? 0
+    const esRepaso = mesJugando < (perfil?.empresa_mes ?? 0)
     const nuevasCorrectas = correctasMes + 1
     setCorrectasMes(nuevasCorrectas)
 
-    // +5 XP
+    if (esRepaso) return // Mes ya completado — sin XP ni avance
+
+    // +5 XP solo en el mes actual
     const nuevoXp = (perfil.xp_total || 0) + 5
     let nuevoMes = perfil.empresa_mes || 0
     let nuevoTitulo = perfil.titulo_empresa
 
-    // Avanzar mes si alcanzó las correctas requeridas
     if (nuevasCorrectas >= CORRECTAS_POR_MES) {
       nuevoMes = nuevoMes + 1
       setCorrectasMes(0)
@@ -143,6 +156,8 @@ function EmpresaInner() {
   const esCorrecta = (op) => op === caso?.respuesta_correcta
   const esSeleccionada = (op) => op === seleccion
   const mes = perfil?.empresa_mes ?? 0
+  const mesJugando = mesActivo ?? mes
+  const esRepaso = mesJugando < mes
   const tituloActual = getTitulo(mes)
   const progresoMes = Math.min((correctasMes / CORRECTAS_POR_MES) * 100, 100)
 
@@ -172,10 +187,50 @@ function EmpresaInner() {
               </p>
             </div>
             <div className="text-right flex-shrink-0">
-              <p className="text-lg font-extrabold text-yellow-400">+5 XP</p>
-              <p className="text-xs text-zinc-500">por acierto</p>
+              {esRepaso ? (
+                <>
+                  <p className="text-sm font-bold text-zinc-500">Repaso</p>
+                  <p className="text-xs text-zinc-600">Sin XP</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-extrabold text-yellow-400">+5 XP</p>
+                  <p className="text-xs text-zinc-500">por acierto</p>
+                </>
+              )}
             </div>
           </div>
+
+          {/* Selector meses anteriores */}
+          {mes > 0 && (
+            <div className="flex gap-2 flex-wrap mb-3">
+              {Array.from({ length: mes }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => cambiarMes(i)}
+                  className="text-xs px-2.5 py-1 rounded-lg font-bold transition-all"
+                  style={{
+                    background: mesJugando === i ? "rgba(234,179,8,0.25)" : "rgba(255,255,255,0.05)",
+                    border: `1px solid ${mesJugando === i ? "rgba(234,179,8,0.6)" : "rgba(255,255,255,0.1)"}`,
+                    color: mesJugando === i ? "#fbbf24" : "#6b7280",
+                  }}
+                >
+                  {MESES[i % 12]}
+                </button>
+              ))}
+              <button
+                onClick={() => cambiarMes(mes)}
+                className="text-xs px-2.5 py-1 rounded-lg font-bold transition-all"
+                style={{
+                  background: mesJugando === mes ? "rgba(234,179,8,0.25)" : "rgba(255,255,255,0.05)",
+                  border: `1px solid ${mesJugando === mes ? "rgba(234,179,8,0.6)" : "rgba(255,255,255,0.1)"}`,
+                  color: mesJugando === mes ? "#fbbf24" : "#6b7280",
+                }}
+              >
+                {MESES[mes % 12]} ← actual
+              </button>
+            </div>
+          )}
 
           {/* Progreso del mes */}
           <div>
