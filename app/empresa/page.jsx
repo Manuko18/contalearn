@@ -47,6 +47,9 @@ function EmpresaInner() {
 
   const [mesActivo, setMesActivo] = useState(null)
   const [correctasMes, setCorrectasMes] = useState(0)
+  const [fallosSegidos, setFallosSegidos] = useState(0)
+  const [aciertosSegidos, setAciertosSegidos] = useState(0)
+  const [dificultad, setDificultad] = useState("normal")
   const [preguntasVistasIds, setPreguntasVistasIds] = useState(() => {
     if (typeof window === "undefined") return []
     try { return JSON.parse(localStorage.getItem("empresa_vistas") || "[]") } catch { return [] }
@@ -101,6 +104,7 @@ function EmpresaInner() {
         body: JSON.stringify({
           mes,
           preguntasVistasIds,
+          dificultad,
         }),
       })
       const data = await res.json()
@@ -130,7 +134,19 @@ function EmpresaInner() {
     setRespondido(true)
 
     const esCorrecta = opcion === caso.respuesta_correcta
-    if (!esCorrecta) return
+
+    if (!esCorrecta) {
+      const nuevosFallos = fallosSegidos + 1
+      setFallosSegidos(nuevosFallos)
+      setAciertosSegidos(0)
+      if (nuevosFallos >= 2) setDificultad("facil")
+      return
+    }
+
+    const nuevosAciertos = aciertosSegidos + 1
+    setAciertosSegidos(nuevosAciertos)
+    setFallosSegidos(0)
+    if (nuevosAciertos >= 3 && dificultad === "facil") setDificultad("normal")
 
     const mesJugando = mesActivo ?? perfil?.empresa_mes ?? 0
     const esRepaso = mesJugando < (perfil?.empresa_mes ?? 0)
@@ -217,6 +233,9 @@ function EmpresaInner() {
                 {tituloActual.titulo
                   ? `${tituloActual.badge} ${tituloActual.titulo} · Mes ${mes + 1}`
                   : `Mes ${mes + 1} — ${MESES[mes % 12]}`}
+                {dificultad === "facil" && (
+                  <span className="ml-2 text-blue-400 font-bold">· Modo fácil 🎯</span>
+                )}
               </p>
             </div>
             <div className="text-right flex-shrink-0">

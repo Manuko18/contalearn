@@ -12,16 +12,17 @@ const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
 
 export async function POST(req) {
   try {
-    const { mes, preguntasVistasIds = [] } = await req.json()
+    const { mes, preguntasVistasIds = [], dificultad: difUsuario = "normal" } = await req.json()
 
     const mesNombre = MESES[mes % 12]
-    const dificultad = mes < 3 ? "básica" : mes < 6 ? "intermedia" : "avanzada"
+    const dificultadMes = mes < 3 ? "básica" : mes < 6 ? "intermedia" : "avanzada"
 
-    // 1. Buscar pregunta guardada que no haya visto el usuario
+    // 1. Buscar pregunta guardada que no haya visto el usuario, filtrando por dificultad si aplica
     let query = supabase
       .from("empresa_preguntas")
       .select("*")
       .eq("mes", mes)
+    if (difUsuario === "facil") query = query.eq("dificultad", "facil")
     if (preguntasVistasIds.length > 0) {
       query = query.not("id", "in", `(${preguntasVistasIds.join(",")})`)
     }
@@ -48,7 +49,7 @@ export async function POST(req) {
         role: "user",
         content: `Eres un experto en contabilidad ecuatoriana. Genera un caso contable para "Distribuidora Andes S.A." (Quito).
 
-Mes: ${mesNombre}. Dificultad: ${dificultad}.
+Mes: ${mesNombre}. Dificultad: ${difUsuario === "facil" ? "FÁCIL — concepto básico y directo, sin ambigüedad" : dificultadMes}.
 
 Pasos obligatorios antes de responder:
 - Define la respuesta correcta según normativa ecuatoriana (SRI, NIC, NIIF).
@@ -82,6 +83,7 @@ Responde SOLO con este JSON, sin texto extra:
         opciones: caso.opciones,
         respuesta_correcta: caso.respuesta_correcta,
         explicacion: caso.explicacion,
+        dificultad: difUsuario === "facil" ? "facil" : "normal",
       }])
       .select("id")
       .single()
