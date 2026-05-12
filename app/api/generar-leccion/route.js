@@ -7,6 +7,8 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
+const TIPOS = ["multiple_choice", "verdadero_falso", "completar_espacio"]
+
 const ANGULOS = [
   "Pregunta sobre la DEFINICIÓN o concepto principal del tema.",
   "Pregunta con un EJEMPLO PRÁCTICO o caso numérico concreto (usa montos en USD).",
@@ -15,11 +17,88 @@ const ANGULOS = [
   "Pregunta que identifique un ERROR COMÚN o concepto erróneo frecuente en este tema.",
 ]
 
+function promptPorTipo(tipo, slideTema, nivelDificultad, tipoAngulo, evitar) {
+  if (tipo === "verdadero_falso") {
+    return `Eres un experto en contabilidad ecuatoriana. Genera una pregunta de verdadero o falso sobre este tema:
+
+${slideTema}
+
+Dificultad: ${nivelDificultad}
+Enfoque: ${tipoAngulo}${evitar}
+
+Pasos obligatorios:
+- Escribe una AFIRMACIÓN corta sobre el tema (no una pregunta).
+- Decide si es verdadera o falsa según normativa ecuatoriana (SRI, NIC, NIIF).
+- La explicacion justifica por qué es verdadera o falsa.
+
+Reglas de formato OBLIGATORIAS:
+- La afirmación debe tener máximo 12 palabras.
+- Varía entre afirmaciones verdaderas y falsas (no siempre el mismo).
+
+Responde SOLO con este JSON, sin texto extra:
+{
+  "pregunta": "afirmación corta sobre el tema (máx 12 palabras)",
+  "respuesta_correcta": "true",
+  "explicacion": "justificación breve (máx 2 líneas)"
+}`
+  }
+
+  if (tipo === "completar_espacio") {
+    return `Eres un experto en contabilidad ecuatoriana. Genera un ejercicio de completar el espacio sobre este tema:
+
+${slideTema}
+
+Dificultad: ${nivelDificultad}
+Enfoque: ${tipoAngulo}${evitar}
+
+Pasos obligatorios:
+- Escribe una oración con un espacio en blanco indicado con _____.
+- La palabra o frase que falta debe ser un término contable clave del tema.
+- La explicacion justifica por qué esa es la respuesta correcta.
+
+Reglas de formato OBLIGATORIAS:
+- La oración completa debe tener máximo 15 palabras.
+- La respuesta correcta debe ser 1-3 palabras (término técnico, no oración).
+
+Responde SOLO con este JSON, sin texto extra:
+{
+  "pregunta": "oración con _____ en el lugar de la respuesta (máx 15 palabras)",
+  "respuesta_correcta": "término que va en el espacio (1-3 palabras)",
+  "explicacion": "justificación breve (máx 2 líneas)"
+}`
+  }
+
+  // multiple_choice (default)
+  return `Eres un experto en contabilidad ecuatoriana. Genera una pregunta de opción múltiple sobre este tema:
+
+${slideTema}
+
+Dificultad: ${nivelDificultad}
+Tipo de pregunta OBLIGATORIO: ${tipoAngulo}${evitar}
+
+Pasos obligatorios:
+- La pregunta debe ser EXCLUSIVAMENTE sobre el tema indicado.
+- Define la respuesta correcta según normativa ecuatoriana (SRI, NIC, NIIF).
+- La explicacion justifica exactamente por qué esa es la respuesta correcta.
+- Crea 3 opciones incorrectas plausibles pero erróneas.
+
+Reglas de formato OBLIGATORIAS:
+- La pregunta debe tener máximo 12 palabras (corta y directa).
+- Las opciones deben tener máximo 8 palabras cada una.
+
+Responde SOLO con este JSON, sin texto extra:
+{
+  "pregunta": "pregunta corta y directa (máx 12 palabras)",
+  "opciones": ["opción correcta (máx 8 palabras)", "incorrecta 1", "incorrecta 2", "incorrecta 3"],
+  "respuesta_correcta": "debe ser idéntica a opciones[0]",
+  "explicacion": "justificación breve de por qué esa opción es correcta (máx 2 líneas)"
+}`
+}
+
 export async function POST(req) {
   try {
     const { nivelId, teoriaJson, preguntasVistasIds = [], preguntasEnSesion = [], dificultad = "normal", angulo = 0 } = await req.json()
 
-    // Asignar slide específico según ángulo — cada pregunta cubre un slide diferente
     const allSlides = teoriaJson || []
     const slideIdx = allSlides.length > 0 ? angulo % allSlides.length : 0
     const slideActual = allSlides[slideIdx]
@@ -27,13 +106,16 @@ export async function POST(req) {
       ? `${slideActual.titulo}: ${slideActual.contenido}`
       : allSlides.map(s => `${s.titulo}: ${s.contenido}`).join("\n\n")
 
-    // 1. Buscar en banco: mismo slide, misma dificultad, no vistas
+    const tipo = TIPOS[angulo % TIPOS.length]
+
+    // 1. Buscar en banco: mismo slide, mismo tipo, misma dificultad, no vistas
     let query = supabase
       .from("nivel_preguntas")
       .select("*")
       .eq("nivel_id", nivelId)
       .eq("dificultad", dificultad)
       .eq("slide_idx", slideIdx)
+      .eq("tipo", tipo)
     if (preguntasVistasIds.length > 0) {
       query = query.not("id", "in", `(${preguntasVistasIds.join(",")})`)
     }
@@ -44,8 +126,9 @@ export async function POST(req) {
       return Response.json({
         pregunta: {
           id: p.id,
+          tipo,
           pregunta: p.pregunta,
-          opciones: p.opciones.sort(() => Math.random() - 0.5),
+          opciones: p.opciones ? p.opciones.sort(() => Math.random() - 0.5) : null,
           respuesta_correcta: p.respuesta_correcta,
           explicacion: p.explicacion,
         },
@@ -53,13 +136,14 @@ export async function POST(req) {
       })
     }
 
-    // 2. No hay en banco — leer existentes del mismo slide para evitar duplicados
+    // 2. Leer existentes del mismo slide+tipo para evitar duplicados
     const { data: existentes } = await supabase
       .from("nivel_preguntas")
       .select("pregunta")
       .eq("nivel_id", nivelId)
       .eq("dificultad", dificultad)
       .eq("slide_idx", slideIdx)
+      .eq("tipo", tipo)
       .limit(30)
 
     const todasAEvitar = [
@@ -77,38 +161,12 @@ export async function POST(req) {
 
     const tipoAngulo = ANGULOS[angulo % ANGULOS.length]
 
+    const prompt = promptPorTipo(tipo, slideTema, nivelDificultad, tipoAngulo, evitar)
+
     const { content } = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
-      messages: [{
-        role: "user",
-        content: `Eres un experto en contabilidad ecuatoriana. Genera una pregunta de evaluación sobre este tema específico:
-
-${slideTema}
-
-Dificultad: ${nivelDificultad}
-Tipo de pregunta OBLIGATORIO: ${tipoAngulo}${evitar}
-
-Pasos obligatorios:
-- La pregunta debe ser EXCLUSIVAMENTE sobre el tema indicado arriba.
-- Sigue ESTRICTAMENTE el tipo de pregunta indicado.
-- Define la respuesta correcta según normativa ecuatoriana (SRI, NIC, NIIF).
-- La explicacion justifica exactamente por qué esa es la respuesta correcta.
-- Crea 3 opciones incorrectas plausibles pero erróneas.
-
-Reglas de formato OBLIGATORIAS:
-- La pregunta debe tener máximo 12 palabras (corta y directa).
-- Las opciones deben tener máximo 8 palabras cada una.
-- Nada de párrafos largos ni casos narrativos.
-
-Responde SOLO con este JSON, sin texto extra:
-{
-  "pregunta": "pregunta corta y directa (máx 12 palabras)",
-  "opciones": ["opción correcta (máx 8 palabras)", "incorrecta 1", "incorrecta 2", "incorrecta 3"],
-  "respuesta_correcta": "debe ser idéntica a opciones[0]",
-  "explicacion": "justificación breve de por qué esa opción es correcta (máx 2 líneas)"
-}`,
-      }],
+      messages: [{ role: "user", content: prompt }],
     })
 
     const texto = content[0].text.trim()
@@ -116,24 +174,25 @@ Responde SOLO con este JSON, sin texto extra:
     if (!jsonMatch) throw new Error("Respuesta no es JSON válido")
     const p = JSON.parse(jsonMatch[0])
 
-    // 3. Guardar en banco con slide_idx y dificultad
+    // 3. Guardar en banco
     const { data: nueva } = await supabase
       .from("nivel_preguntas")
       .insert([{
         nivel_id: nivelId,
         pregunta: p.pregunta,
-        opciones: p.opciones,
+        opciones: p.opciones || null,
         respuesta_correcta: p.respuesta_correcta,
         explicacion: p.explicacion,
         dificultad,
         slide_idx: slideIdx,
+        tipo,
       }])
       .select("id")
       .single()
 
-    p.opciones = p.opciones.sort(() => Math.random() - 0.5)
+    if (p.opciones) p.opciones = p.opciones.sort(() => Math.random() - 0.5)
     return Response.json({
-      pregunta: { id: nueva?.id, ...p },
+      pregunta: { id: nueva?.id, tipo, ...p },
       fromCache: false,
     })
   } catch (err) {

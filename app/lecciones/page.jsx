@@ -295,7 +295,7 @@ function LeccionInner() {
 
   const cargarPreguntasIA = async () => {
     setCargandoJuego(true)
-    const TOTAL = 5
+    const TOTAL = 10
     const storageKey = `vistas_nivel_${nivelId}`
     const difKey = `dif_nivel_${nivelId}`
     const dif = localStorage.getItem(difKey) || "normal"
@@ -325,10 +325,10 @@ function LeccionInner() {
             id: `ia_${pregunta.id ?? Math.random()}`,
             bancoId: pregunta.id ?? null,
             esIA: true,
-            tipo_ejercicio: "multiple_choice",
+            tipo_ejercicio: pregunta.tipo || "multiple_choice",
             contenido_json: {
               pregunta: pregunta.pregunta,
-              opciones: pregunta.opciones,
+              opciones: pregunta.opciones || [],
               respuesta_correcta: pregunta.respuesta_correcta,
               explicacion_error: pregunta.explicacion,
             },
