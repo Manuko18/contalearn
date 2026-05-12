@@ -242,27 +242,29 @@ function PracticaInner() {
 
               {/* Botón siguiente */}
               {respondido && (
-                <button
-                  onClick={generarPregunta}
-                  className="w-full py-3 rounded-2xl font-extrabold text-white text-sm transition-all active:scale-95"
-                  style={{
-                    background: "rgba(124,58,237,0.8)",
-                    border: "1.5px solid rgba(124,58,237,0.6)",
-                    boxShadow: "0 4px 0 rgba(109,40,217,0.6)",
-                  }}
-                >
-                  Siguiente pregunta →
-                </button>
-                <button onClick={reportarError} disabled={reportado}
-                  className="w-full py-2 rounded-xl text-xs font-semibold transition-all"
-                  style={{
-                    background: reportado ? "rgba(239,68,68,0.05)" : "rgba(239,68,68,0.08)",
-                    border: "1px solid rgba(239,68,68,0.2)",
-                    color: reportado ? "#6b7280" : "#f87171",
-                  }}
-                >
-                  {reportado ? "✓ Reportado — lo revisaré" : "⚠️ Reportar pregunta incorrecta"}
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={generarPregunta}
+                    className="w-full py-3 rounded-2xl font-extrabold text-white text-sm transition-all active:scale-95"
+                    style={{
+                      background: "rgba(124,58,237,0.8)",
+                      border: "1.5px solid rgba(124,58,237,0.6)",
+                      boxShadow: "0 4px 0 rgba(109,40,217,0.6)",
+                    }}
+                  >
+                    Siguiente pregunta →
+                  </button>
+                  <button onClick={reportarError} disabled={reportado}
+                    className="w-full py-2 rounded-xl text-xs font-semibold transition-all"
+                    style={{
+                      background: reportado ? "rgba(239,68,68,0.05)" : "rgba(239,68,68,0.08)",
+                      border: "1px solid rgba(239,68,68,0.2)",
+                      color: reportado ? "#6b7280" : "#f87171",
+                    }}
+                  >
+                    {reportado ? "✓ Reportado — lo revisaré" : "⚠️ Reportar pregunta incorrecta"}
+                  </button>
+                </div>
               )}
             </div>
           )}
