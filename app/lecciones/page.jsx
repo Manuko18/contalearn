@@ -302,8 +302,9 @@ function LeccionInner() {
     setDificultad(dif)
     let vistas = JSON.parse(localStorage.getItem(storageKey) || "[]")
 
-    // Fetch secuencial para acumular IDs vistos y evitar repetidos en esta sesión
+    // Fetch secuencial — acumula IDs y textos para evitar repetidos en esta sesión
     const pqs = []
+    const textosEnSesion = []
     for (let i = 0; i < TOTAL; i++) {
       try {
         const res = await fetch("/api/generar-leccion", {
@@ -313,6 +314,7 @@ function LeccionInner() {
             nivelId,
             teoriaJson: nivel?.teoria_json || [],
             preguntasVistasIds: vistas,
+            preguntasEnSesion: textosEnSesion,
             dificultad: dif,
           }),
         })
@@ -330,6 +332,7 @@ function LeccionInner() {
               explicacion_error: pregunta.explicacion,
             },
           })
+          textosEnSesion.push(pregunta.pregunta)
           if (pregunta.id) vistas = [...vistas, pregunta.id]
         }
       } catch {}

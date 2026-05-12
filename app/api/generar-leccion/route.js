@@ -9,7 +9,7 @@ const supabase = createClient(
 
 export async function POST(req) {
   try {
-    const { nivelId, teoriaJson, preguntasVistasIds = [], dificultad = "normal" } = await req.json()
+    const { nivelId, teoriaJson, preguntasVistasIds = [], preguntasEnSesion = [], dificultad = "normal" } = await req.json()
 
     // 1. Buscar en banco: misma dificultad, no vistas
     let query = supabase
@@ -44,8 +44,12 @@ export async function POST(req) {
       .eq("dificultad", dificultad)
       .limit(30)
 
-    const evitar = existentes?.length > 0
-      ? `\n\nEvita generar preguntas similares o iguales a estas que ya existen en el banco:\n${existentes.map(e => `- ${e.pregunta}`).join("\n")}`
+    const todasAEvitar = [
+      ...(existentes || []).map(e => e.pregunta),
+      ...preguntasEnSesion,
+    ]
+    const evitar = todasAEvitar.length > 0
+      ? `\n\nDEBES generar una pregunta COMPLETAMENTE DIFERENTE a estas (ni el mismo concepto ni parecida):\n${todasAEvitar.map(q => `- ${q}`).join("\n")}`
       : ""
 
     const slides = (teoriaJson || [])
