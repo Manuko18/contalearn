@@ -39,9 +39,11 @@ function EmpresaInner() {
   const [seleccion, setSeleccion] = useState(null)
   const [respondido, setRespondido] = useState(false)
 
-  const [mesActivo, setMesActivo] = useState(null) // null = mes actual del usuario
+  const [mesActivo, setMesActivo] = useState(null)
   const [correctasMes, setCorrectasMes] = useState(0)
   const [preguntasVistasIds, setPreguntasVistasIds] = useState([])
+  const [preguntaActivaId, setPreguntaActivaId] = useState(null)
+  const [reportado, setReportado] = useState(false)
 
   const [curAch, setCurAch] = useState(null)
   const [achQueue, setAchQueue] = useState([])
@@ -94,6 +96,8 @@ function EmpresaInner() {
       if (data.caso) {
         setCaso(data.caso)
         setMesNombre(data.mes)
+        setPreguntaActivaId(data.id || null)
+        setReportado(false)
         if (data.id) setPreguntasVistasIds(prev => [...prev, data.id])
       }
     } catch {
@@ -151,6 +155,18 @@ function EmpresaInner() {
       setCurAch(newAchs[0])
       setAchQueue(newAchs.slice(1))
     }
+  }
+
+  const reportarError = async () => {
+    if (!caso || reportado) return
+    setReportado(true)
+    await supabase.from("reportes_preguntas").insert([{
+      pregunta_id: preguntaActivaId,
+      pregunta_texto: caso.situacion + " " + caso.pregunta,
+      respuesta_correcta: caso.respuesta_correcta,
+      explicacion: caso.explicacion,
+      reportado_por: user?.id,
+    }])
   }
 
   const esCorrecta = (op) => op === caso?.respuesta_correcta
@@ -324,12 +340,24 @@ function EmpresaInner() {
               )}
 
               {respondido && (
-                <button onClick={generarCaso}
-                  className="w-full py-3 rounded-2xl font-extrabold text-white text-sm transition-all active:scale-95"
-                  style={{ background: "rgba(234,179,8,0.8)", border: "1.5px solid rgba(234,179,8,0.6)", boxShadow: "0 4px 0 rgba(180,130,0,0.6)", color: "#000" }}
-                >
-                  Siguiente situación →
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button onClick={generarCaso}
+                    className="w-full py-3 rounded-2xl font-extrabold text-white text-sm transition-all active:scale-95"
+                    style={{ background: "rgba(234,179,8,0.8)", border: "1.5px solid rgba(234,179,8,0.6)", boxShadow: "0 4px 0 rgba(180,130,0,0.6)", color: "#000" }}
+                  >
+                    Siguiente situación →
+                  </button>
+                  <button onClick={reportarError} disabled={reportado}
+                    className="w-full py-2 rounded-xl text-xs font-semibold transition-all"
+                    style={{
+                      background: reportado ? "rgba(239,68,68,0.05)" : "rgba(239,68,68,0.08)",
+                      border: "1px solid rgba(239,68,68,0.2)",
+                      color: reportado ? "#6b7280" : "#f87171",
+                    }}
+                  >
+                    {reportado ? "✓ Reportado — lo revisaré" : "⚠️ Reportar pregunta incorrecta"}
+                  </button>
+                </div>
               )}
             </div>
           )}

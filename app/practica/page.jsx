@@ -16,6 +16,7 @@ function PracticaInner() {
   const [nivel, setNivel] = useState(null)
   const [loadingNivel, setLoadingNivel] = useState(true)
 
+  const [user, setUser] = useState(null)
   const [ejercicio, setEjercicio] = useState(null)
   const [generando, setGenerando] = useState(false)
   const [seleccion, setSeleccion] = useState(null)
@@ -23,11 +24,13 @@ function PracticaInner() {
   const [correctas, setCorrectas] = useState(0)
   const [total, setTotal] = useState(0)
   const [preguntasAnteriores, setPreguntasAnteriores] = useState([])
+  const [reportado, setReportado] = useState(false)
 
   useEffect(() => {
     const cargar = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push("/login"); return }
+      setUser(user)
 
       if (nivelId) {
         const { data } = await supabase
@@ -46,11 +49,24 @@ function PracticaInner() {
     if (!loadingNivel && nivel) generarPregunta()
   }, [loadingNivel])
 
+  const reportarError = async () => {
+    if (!ejercicio || reportado) return
+    setReportado(true)
+    await supabase.from("reportes_preguntas").insert([{
+      pregunta_id: null,
+      pregunta_texto: ejercicio.pregunta,
+      respuesta_correcta: ejercicio.respuesta_correcta,
+      explicacion: ejercicio.explicacion,
+      reportado_por: user?.id,
+    }])
+  }
+
   const generarPregunta = async () => {
     setGenerando(true)
     setEjercicio(null)
     setSeleccion(null)
     setRespondido(false)
+    setReportado(false)
 
     try {
       const res = await fetch("/api/generar-ejercicio", {
@@ -236,6 +252,16 @@ function PracticaInner() {
                   }}
                 >
                   Siguiente pregunta →
+                </button>
+                <button onClick={reportarError} disabled={reportado}
+                  className="w-full py-2 rounded-xl text-xs font-semibold transition-all"
+                  style={{
+                    background: reportado ? "rgba(239,68,68,0.05)" : "rgba(239,68,68,0.08)",
+                    border: "1px solid rgba(239,68,68,0.2)",
+                    color: reportado ? "#6b7280" : "#f87171",
+                  }}
+                >
+                  {reportado ? "✓ Reportado — lo revisaré" : "⚠️ Reportar pregunta incorrecta"}
                 </button>
               )}
             </div>
