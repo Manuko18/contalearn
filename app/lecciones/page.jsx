@@ -90,10 +90,14 @@ function LeccionInner() {
       if (!nivelId) { router.push("/niveles"); return }
       setUser(user)
 
-      const [{ data: nivelData }, { data: perfil }] = await Promise.all([
+      const [{ data: nivelData }, { data: perfil }, { data: progresoNivel }] = await Promise.all([
         supabase.from("niveles").select("*").eq("id", nivelId).single(),
         supabase.from("users").select("xp_total, vidas").eq("id", user.id).maybeSingle(),
+        supabase.from("progreso_nivel").select("dificultad").eq("user_id", user.id).eq("nivel_id", nivelId),
       ])
+      const difs = new Set((progresoNivel || []).map(p => p.dificultad))
+      const difInicial = difs.has("normal") ? "dificil" : difs.has("facil") ? "normal" : "facil"
+      setDificultad(difInicial)
 
       if (!perfil) {
         await supabase.from("users").insert([{ id: user.id, email: user.email, xp_total: 0, racha_actual: 0, vidas: 5, ultima_vida_recargada: new Date().toISOString() }])
@@ -297,9 +301,7 @@ function LeccionInner() {
     setCargandoJuego(true)
     const TOTAL = 10
     const storageKey = `vistas_nivel_${nivelId}`
-    const difKey = `dif_nivel_${nivelId}`
-    const dif = localStorage.getItem(difKey) || "normal"
-    setDificultad(dif)
+    const dif = dificultad
     let vistas = JSON.parse(localStorage.getItem(storageKey) || "[]")
 
     // Mezclar tipos aleatoriamente para que el orden varíe cada sesión
@@ -494,10 +496,14 @@ function LeccionInner() {
       const pctFinal     = resultados.length > 0
         ? Math.round((numCorrectas / resultados.length) * 100)
         : 0
-      // Ajustar dificultad para la próxima sesión
-      const difKey = `dif_nivel_${nivelId}`
-      const nuevaDif = pctFinal >= 80 ? "dificil" : pctFinal <= 40 ? "facil" : "normal"
-      localStorage.setItem(difKey, nuevaDif)
+      // Guardar progresión si aprobó (≥70%)
+      if (pctFinal >= 70 && !modoTest) {
+        await supabase.from("progreso_nivel").upsert([{
+          user_id: user.id, nivel_id: nivelId, dificultad,
+        }], { onConflict: "user_id,nivel_id,dificultad" })
+        if (dificultad === "facil") setDificultad("normal")
+        else if (dificultad === "normal") setDificultad("dificil")
+      }
       const isPerfect    = pctFinal === 100
       const isClean      = vidas >= vidasInicialesRef.current // no perdió vidas
       if (isPerfect) {
@@ -785,6 +791,26 @@ function LeccionInner() {
             })()}
           </div>
 
+          {/* Mensaje de progresión */}
+          {pct >= 70 && dificultad === "facil" && (
+            <div className="rounded-2xl p-4 mb-4 text-center" style={{ background: "#0d2e14", border: "1px solid var(--color-primary)" }}>
+              <p className="text-lg font-extrabold" style={{ color: "var(--color-primary)" }}>🎉 ¡Superaste el nivel Fácil!</p>
+              <p className="text-sm text-zinc-400 mt-1">La próxima sesión será en dificultad 🟡 Normal</p>
+            </div>
+          )}
+          {pct >= 70 && dificultad === "normal" && (
+            <div className="rounded-2xl p-4 mb-4 text-center" style={{ background: "#1a1a0d", border: "1px solid #fbbf24" }}>
+              <p className="text-lg font-extrabold" style={{ color: "#fbbf24" }}>🔥 ¡Superaste el nivel Normal!</p>
+              <p className="text-sm text-zinc-400 mt-1">La próxima sesión será en dificultad 🔴 Difícil</p>
+            </div>
+          )}
+          {pct >= 70 && dificultad === "dificil" && (
+            <div className="rounded-2xl p-4 mb-4 text-center" style={{ background: "#2e0a0a", border: "1px solid #f87171" }}>
+              <p className="text-lg font-extrabold" style={{ color: "#f87171" }}>🏆 ¡Nivel completado!</p>
+              <p className="text-sm text-zinc-400 mt-1">El siguiente nivel está desbloqueado</p>
+            </div>
+          )}
+
           <div className="flex flex-col gap-2">
             <button
               onClick={() => router.push(`/practica?nivel=${nivelId}`)}
@@ -903,6 +929,9 @@ function LeccionInner() {
           <div className="h-3 rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: "var(--color-primary)" }} />
         </div>
         <div className="flex items-center gap-3 text-sm font-bold">
+          <span style={{ color: dificultad === "facil" ? "#4ade80" : dificultad === "dificil" ? "#f87171" : "#fbbf24" }}>
+            {dificultad === "facil" ? "🟢" : dificultad === "dificil" ? "🔴" : "🟡"}
+          </span>
           <span style={{ color: "var(--color-danger)" }}>❤️ {vidas}</span>
           <span style={{ color: "var(--color-info)" }}>⚡ {xp}</span>
         </div>

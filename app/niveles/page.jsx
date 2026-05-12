@@ -39,23 +39,20 @@ export default function NivelesPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push("/login"); return }
 
-      const [{ data: nivelesData }, { data: leccionesData }, { data: progresoData }] =
+      const [{ data: nivelesData }, { data: progresoData }] =
         await Promise.all([
           supabase.from("niveles").select("*").order("orden", { ascending: true }),
-          supabase.from("lecciones").select("id, nivel_id"),
-          supabase.from("progreso_usuario").select("leccion_id").eq("user_id", user.id).eq("completado", true),
+          supabase.from("progreso_nivel").select("nivel_id, dificultad").eq("user_id", user.id),
         ])
 
-      const completadasIds = new Set((progresoData || []).map((p) => p.leccion_id))
-
       const progreso = (nivelesData || []).map((nivel) => {
-        const nivelLecs = (leccionesData || []).filter((l) => l.nivel_id === nivel.id)
-        const completadas = nivelLecs.filter(l => completadasIds.has(l.id)).length
+        const difs = new Set((progresoData || []).filter(p => p.nivel_id === nivel.id).map(p => p.dificultad))
+        const pasos = (difs.has("facil") ? 1 : 0) + (difs.has("normal") ? 1 : 0) + (difs.has("dificil") ? 1 : 0)
         return {
           nivelId: nivel.id,
-          total: nivelLecs.length,
-          completadas,
-          completo: nivelLecs.length > 0 && completadas === nivelLecs.length,
+          completo: difs.has("dificil"),
+          pasos,
+          difs,
         }
       })
 
@@ -137,9 +134,7 @@ export default function NivelesPage() {
                     {catNiveles.map(({ nivel, progreso, index }) => {
                       const desbloqueado = modoTest || index === 0 || progresoPorNivel[index - 1]?.completo
                       const color = COLORES[index % COLORES.length]
-                      const pct = progreso?.total > 0
-                        ? Math.round((progreso.completadas / progreso.total) * 100)
-                        : 0
+                      const pct = Math.round(((progreso?.pasos ?? 0) / 3) * 100)
 
                       return (
                         <div
@@ -177,7 +172,7 @@ export default function NivelesPage() {
                             <div className="flex flex-col items-end gap-1">
                               {progreso?.completo && <span className="text-xl">✅</span>}
                               {!desbloqueado && <span className="text-xl">🔒</span>}
-                              {desbloqueado && !progreso?.completo && progreso?.total > 0 && (
+                              {desbloqueado && !progreso?.completo && progreso?.pasos > 0 && (
                                 <span className="text-xs font-bold" style={{ color: color.icon }}>{pct}%</span>
                               )}
                             </div>
@@ -185,22 +180,21 @@ export default function NivelesPage() {
 
                           <p className="text-sm mb-4 text-zinc-400">{nivel.descripcion}</p>
 
-                          {desbloqueado && progreso?.total > 0 && (
+                          {desbloqueado && (
                             <>
                               <div className="mb-3">
-                                <div className="w-full rounded-full h-1.5" style={{ background: "rgba(0,0,0,0.3)" }}>
-                                  <div
-                                    className="h-1.5 rounded-full transition-all duration-700"
-                                    style={{
-                                      width: `${pct}%`,
-                                      background: color.glow,
-                                      boxShadow: `0 0 8px ${color.glow}88`,
-                                    }}
-                                  />
+                                <div className="flex gap-2 mb-1">
+                                  {[["facil","🟢","Fácil"],["normal","🟡","Normal"],["dificil","🔴","Difícil"]].map(([d, emoji, label]) => (
+                                    <div key={d} className="flex-1 rounded-xl py-1 text-center text-xs font-bold"
+                                      style={{
+                                        background: progreso?.difs?.has(d) ? color.glow + "33" : "rgba(0,0,0,0.2)",
+                                        border: `1px solid ${progreso?.difs?.has(d) ? color.glow : "rgba(255,255,255,0.08)"}`,
+                                        color: progreso?.difs?.has(d) ? color.icon : "#6b7280",
+                                      }}>
+                                      {progreso?.difs?.has(d) ? "✓ " : ""}{emoji} {label}
+                                    </div>
+                                  ))}
                                 </div>
-                                <p className="text-xs mt-1" style={{ color: color.icon + "99" }}>
-                                  {progreso.completadas}/{progreso.total} preguntas completadas
-                                </p>
                               </div>
                               <div className="flex gap-2">
                                 <button
