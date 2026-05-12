@@ -9,7 +9,7 @@ const supabase = createClient(
 
 export async function POST(req) {
   try {
-    const { nivelId, teoriaJson, preguntasVistasIds = [], preguntasEnSesion = [], dificultad = "normal" } = await req.json()
+    const { nivelId, teoriaJson, preguntasVistasIds = [], preguntasEnSesion = [], dificultad = "normal", angulo = 0 } = await req.json()
 
     // 1. Buscar en banco: misma dificultad, no vistas
     let query = supabase
@@ -61,6 +61,15 @@ export async function POST(req) {
       dificultad === "dificil" ? "DIFÍCIL — aplicación de normas, casos con múltiples pasos o situaciones ambiguas" :
                                  "NORMAL — comprensión y aplicación básica del concepto"
 
+    const angulos = [
+      "Pregunta sobre la DEFINICIÓN o concepto principal del tema.",
+      "Pregunta con un EJEMPLO PRÁCTICO o caso numérico concreto (usa montos en USD).",
+      "Pregunta que COMPARE o distinga entre dos conceptos relacionados del tema.",
+      "Pregunta sobre una NORMA, artículo o reglamento específico (SRI, NIC, NIIF, Código Tributario).",
+      "Pregunta que identifique un ERROR COMÚN o concepto erróneo frecuente en este tema.",
+    ]
+    const tipoAngulo = angulos[angulo % angulos.length]
+
     const { content } = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
@@ -70,10 +79,11 @@ export async function POST(req) {
 
 ${slides}
 
-Dificultad: ${nivelDificultad}${evitar}
+Dificultad: ${nivelDificultad}
+Tipo de pregunta OBLIGATORIO: ${tipoAngulo}${evitar}
 
 Pasos obligatorios antes de responder:
-- La pregunta debe evaluar un concepto específico de la teoría.
+- Sigue ESTRICTAMENTE el tipo de pregunta indicado arriba.
 - Define la respuesta correcta según normativa ecuatoriana (SRI, NIC, NIIF).
 - La explicacion justifica exactamente por qué esa es la respuesta correcta.
 - Crea 3 opciones incorrectas plausibles pero erróneas.

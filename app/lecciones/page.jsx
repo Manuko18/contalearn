@@ -316,6 +316,7 @@ function LeccionInner() {
             preguntasVistasIds: vistas,
             preguntasEnSesion: textosEnSesion,
             dificultad: dif,
+            angulo: i,
           }),
         })
         const { pregunta } = await res.json()
