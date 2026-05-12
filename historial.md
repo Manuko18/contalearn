@@ -18,6 +18,8 @@
 | vidas | integer | 0–5 |
 | ultima_vida_recargada | timestamptz | Para recarga automática |
 | ultima_leccion_fecha | date | Para calcular días sin entrar |
+| empresa_mes | int | Mes actual en modo empresa (default 0) |
+| titulo_empresa | text | Título ganado en empresa (null si ninguno) |
 
 **`niveles`** — id, titulo, descripcion, emoji, color, orden, teoria_json (array de slides)
 
@@ -27,6 +29,12 @@
 
 **`misiones_diarias`** — id, user_id, fecha, tipo, descripcion, icono, meta, progreso, completada, xp_recompensa
 
+**`user_mistakes`** — id, user_id, nivel_id, leccion_id, pregunta, tu_respuesta, respuesta_correcta, created_at
+
+**`empresa_preguntas`** — id, mes, situacion, pregunta, opciones (jsonb), respuesta_correcta, explicacion, dificultad (facil/normal/dificil), created_at
+
+**`reportes_preguntas`** — id, pregunta_id (→empresa_preguntas, nullable), pregunta_texto, respuesta_correcta, explicacion, reportado_por, created_at
+
 Índices SQL aplicados:
 ```sql
 CREATE INDEX idx_lecciones_nivel_dif ON lecciones(nivel_id, dificultad);
@@ -35,15 +43,7 @@ CREATE INDEX idx_users_xp            ON users(xp_total DESC);
 CREATE INDEX idx_misiones_user_fecha ON misiones_diarias(user_id, fecha);
 ```
 
-### Sistema de sub-niveles
-
-Cada nivel principal tiene 4 sub-niveles desbloqueables en orden:
-- 🟢 Junior (preguntas 1–2) · teoría solo aquí
-- 🔵 Semi-Junior (3–4) · va directo al juego
-- 🟣 Semi-Senior (5) · va directo al juego
-- 🔴 Senior (6) · va directo al juego
-
-### Rangos
+### Sistema de rangos
 
 | Rango | XP mínimo |
 |-------|-----------|
@@ -54,28 +54,35 @@ Cada nivel principal tiene 4 sub-niveles desbloqueables en orden:
 | 💠 Diamante | 240 |
 | 👑 Maestro | 300 |
 
-5 niveles × 6 preguntas × 10 XP = 300 XP = Maestro 👑
+### Títulos modo empresa
+
+| Título | Desde mes |
+|--------|-----------|
+| 📋 Contador Jr. | 1 |
+| 📊 Contador | 3 |
+| 💼 Contador Sr. | 6 |
+| 👔 CFO | 10 |
+
+### Logros — 16 en total (12 base + 4 empresa)
+
+Rareza: common · uncommon · rare · epic · legendary
+Storage: localStorage key `cl_achievements_v2`
+Empresa: empresa_mes1 · empresa_contador · empresa_senior · empresa_cfo
 
 ### Conti Core (Mascota.jsx) — niveles de evolución
 
 | evolutionLevel | XP | Cambio visual |
 |---|---|---|
 | 0 | 0–59 | 3 anillos base |
-| 1 | 60+ | +Anillo 4 cyan dasharray |
+| 1 | 60+ | +Anillo 4 cyan |
 | 2 | 120+ | +Anillo 5 azul |
 | 3 | 180+ | +Anillo 6 morado |
-| 4 | 240+ | +Anillo 7 dorado (dual dot) |
+| 4 | 240+ | +Anillo 7 dorado |
 | 5 | 300 | +Símbolos ∑ % $ orbitando |
 
 ### Partículas — presets disponibles
 
 `combo` · `xpGain` · `rankUp` · `levelComplete` · `error` · `achievement` · `confetti` · `mission`
-
-### Logros — 12 en total
-
-Rareza: common · uncommon · rare · epic · legendary
-Condiciones: xp (10/100/200/300) · maxCombo (3/5/8) · racha (3/7/30) · perfectSessions · cleanSessions
-Storage: localStorage key `cl_achievements_v2`
 
 ### Sonidos (lib/audio.js — Web Audio API, sin archivos externos)
 
@@ -112,41 +119,29 @@ SMTP               Gmail smtp.gmail.com:587 App Password
 
 ### Decisiones tomadas
 
-- **Partículas centralizadas en `lib/particles.js`** para no hardcodear en cada componente. Patrón mount-to-play con `key` cambiante.
-- **Logros en localStorage** (`cl_achievements_v2`) en lugar de tabla Supabase adicional. Más simple, sin migración de BD. Trade-off: no persiste entre dispositivos.
-- **Ambient sound singleton** (`lib/ambient.js`): solo un AudioContext global, se inicia con primer gesto del usuario (política de autoplay del navegador).
-- **`useMemo` para opciones mezcladas** en lecciones: eliminó el useEffect+setState que causaba cascadas de render. `mezclar()` re-ejecuta solo cuando cambia `indice`.
-- **Anti-farmeo XP**: se consulta `progreso_usuario` antes de sumar XP. Si la lección ya existe, el combo y feedback visual siguen funcionando pero no se suma XP ni se inserta progreso.
-- **Bonus de misiones acumulado**: se suma `totalBonus` de todas las misiones que completan juntas y se hace una sola lectura+escritura a BD, evitando sobrescribir con valor stale de closure.
-- **`xpSesionRef`** para trackear XP real ganado en la sesión (solo primeras veces correctas). Reemplaza el cálculo incorrecto `preguntasRespRef * 10` que contaba incorrectas.
-- **`transicionDif = null` constante**: la pantalla de transición de dificultad es feature futura, se dejó como placeholder sin useState para no tener setter unused.
-- **`function` declarations en lugar de `const` arrows** para `hablar`, `manejarTiempoAgotado`, `cargarOGenerarMisiones`: necesario porque el ESLint plugin `react-hooks/immutability` no respeta hoisting de `const` y reporta "accessed before declared".
+- **Partículas centralizadas en `lib/particles.js`** para no hardcodear en cada componente.
+- **Logros en localStorage** (`cl_achievements_v2`) en lugar de tabla Supabase adicional. Trade-off: no persiste entre dispositivos.
+- **Ambient sound singleton** (`lib/ambient.js`): solo un AudioContext global, se inicia con primer gesto del usuario.
+- **`useMemo` para opciones mezcladas** en lecciones: eliminó el useEffect+setState que causaba cascadas de render.
+- **Anti-farmeo XP**: se consulta `progreso_usuario` antes de sumar XP. Si ya existe, no suma.
+- **`xpSesionRef`** para trackear XP real ganado en la sesión (solo primeras veces correctas).
+- **`transicionDif = null` constante**: feature futura, placeholder sin useState.
+- **`function` declarations** para `hablar`, `manejarTiempoAgotado`, `cargarOGenerarMisiones`: necesario por hoisting con ESLint.
 
-### Funcionalidades completadas en esta sesión
+### Funcionalidades completadas
 
-- `lib/particles.js` — 7 presets, `generateParticles()`
-- `components/Particles.jsx` — mount-to-play, sin hydration mismatch
-- `lib/achievements.js` — 12 logros, RARITY, check/get/getAll
-- `components/AchievementToast.jsx` — toast con cola, fases hidden→enter→visible→exit
-- `lib/ambient.js` — sonido ambiente 4 capas
-- `components/Mascota.jsx` — Conti Core evolutivo (anillos 4–7 + símbolos financieros)
-- `app/globals.css` — `particle-fly` usa `var(--tx)`, `achievement-pulse` keyframe
-- `app/page.jsx` — ambient integrado, logros al cargar perfil, `xp={xp}` a Mascota, AchievementToast con cola
-- `app/lecciones/page.jsx` — logros al terminar sesión, anti-farmeo XP, misiones corregidas
+- `lib/particles.js`, `components/Particles.jsx`, `lib/achievements.js`, `components/AchievementToast.jsx`
+- `lib/ambient.js`, `components/Mascota.jsx` (Conti Core evolutivo)
+- Anti-farmeo XP, misiones corregidas, logros al terminar sesión
 
 ### Problemas resueltos
 
 | Problema | Fix |
 |----------|-----|
-| 22 errores/warnings ESLint | → 0 (ver arriba) |
+| 22 errores/warnings ESLint | → 0 |
 | `vidas \|\| 5` roto con 0 vidas | `?? 5` |
 | XP duplicado por repetir lecciones | Check `progreso_usuario` antes de sumar |
-| Misiones: XP calculado con preguntas totales | `xpSesionRef` solo correcto-primera vez |
 | Bonuses de misiones se pisaban | `totalBonus` acumulado + una sola escritura |
-| `useRef` en render (Particles) | `useState + useEffect + setTimeout(0)` |
-| setState síncrono en 6 efectos | `setTimeout(0)` o `useMemo` según caso |
-| Funciones usadas antes de declararse | `function` declarations + reordenamiento físico |
-| `resto`, `emoji`, `textoSlide`, `Pantalla` unused | Eliminados |
 
 ---
 
@@ -154,122 +149,111 @@ SMTP               Gmail smtp.gmail.com:587 App Password
 
 ### Decisiones tomadas
 
-- **Columnas reales de la BD**: `niveles` usa `titulo`/`emoji` (no `nombre`/`icono`). `lecciones` no tiene columna `titulo`. Descubierto al ejecutar el seed SQL.
-- **Verdadero/Falso en BD como `"true"`/`"false"`** (strings), no `"Verdadero"`/`"Falso"`. El UI hardcodea esos valores internamente. Función `mostrarRespuesta()` convierte para display.
-- **Ambient movido al layout**: `AmbientProvider.jsx` en `layout.jsx` para que persista entre páginas sin reiniciarse. El dashboard ya no maneja el ambient.
-- **Lo-fi gaming ambient**: arpeggio pentatónico menor de La (A C D E G A G E), scheduler de Web Audio API sin drift, bajo continuo en A1. Reemplazó el pad de acordes Am7 y el drone "Espacio".
-- **DELETE antes de INSERT en seed**: necesario porque nivel 3 tenía lecciones previas. Se borran también registros de `progreso_usuario` para respetar FK.
+- **Columnas reales de la BD**: `niveles` usa `titulo`/`emoji` (no `nombre`/`icono`).
+- **Verdadero/Falso en BD como `"true"`/`"false"`** (strings). `mostrarRespuesta()` convierte para display.
+- **Ambient movido al layout**: `AmbientProvider.jsx` en `layout.jsx` para persistir entre páginas.
+- **DELETE antes de INSERT en seed**: necesario por FK constraints.
 
 ### Funcionalidades completadas
 
-- 63 lecciones nuevas en niveles 3/4/5 (21 × 3), 4 dificultades cada uno
-- Teoría (5 slides) para niveles 3/4/5 en `teoria_json`
-- `mostrarRespuesta()` en `lecciones/page.jsx` — convierte `"true"`/`"false"` a `"Verdadero"`/`"Falso"` en resultados
-- `AmbientProvider.jsx` — Client Component para ambient global en layout
-- Deploy en Vercel: contalearn.vercel.app (conectado a GitHub Manuko18/contalearn)
-- Repo GitHub inicializado y subido desde cero
+- 63 lecciones nuevas en niveles 3/4/5, teoría para cada uno
+- `AmbientProvider.jsx` — ambient global en layout
+- Deploy en Vercel: contalearn.vercel.app
 
 ### Problemas resueltos
 
 | Problema | Fix |
 |----------|-----|
-| Voz sigue al navegar a otra página | `useEffect` unmount cancela `speechSynthesis` |
-| Voz sigue al avanzar rápido entre slides | `return () => cancel()` en useEffect de teoría |
-| Voz suena en pantalla "Sin vidas" | `useEffect` que cancela cuando `vidas <= 0` |
-| Voz suena aunque `PantallaFin` esté activa | `if (vidas <= 0) return` en useEffect de teoría |
-| Botones X no detenían voz al instante | `detenerVoz()` antes de `router.push` |
-| Preguntas verdadero/falso siempre incorrectas | BD tenía `"Verdadero"`, UI compara `"true"` → UPDATE SQL |
-| Ambient se cortaba al cambiar de página | Movido a layout como singleton global |
-| Seed SQL fallaba por columnas inexistentes | Corregido `nombre`→`titulo`, `icono`→`emoji`, removido `titulo` de lecciones |
-| FK constraint al borrar lecciones | DELETE de `progreso_usuario` primero, luego DELETE de `lecciones` |
+| Voz sigue al navegar | `useEffect` unmount cancela `speechSynthesis` |
+| Ambient se cortaba al cambiar página | Movido a layout como singleton |
+| Seed SQL fallaba por columnas inexistentes | Corregido `nombre`→`titulo`, `icono`→`emoji` |
 
-## [2026-05-11] — Sesión: 8 niveles lineales + tributación + fixes voz + modo test
+---
+
+## [2026-05-11] — Sesión: 8 niveles lineales + tributación + modo test
 
 ### Decisiones tomadas
 
-- **Reestructura 5→8 niveles lineales**: eliminados los 4 sub-tiers (Junior/Semi-Junior/Semi-Senior/Senior) por feedback de usuario (confusos, no se sentían distintos). Ahora son 8 niveles lineales agrupados visualmente en 4 categorías: Básico (1-2), Intermedio (3-4), Avanzado (5-6), Experto (7-8).
-- **Desbloqueo secuencial**: `desbloqueado = modoTest || index === 0 || progresoPorNivel[index-1]?.completo`. El primer nivel siempre abierto.
-- **Niveles 6/7/8 de tributación**: IVA/DIAN (conceptos), Impuesto de Renta (UVT, declarantes, tarifas), Liquidación y Casos Prácticos. 12 preguntas cada uno, 3 slides de teoría.
-- **`vozIdRef` counter**: cada llamada a `hablar()` recibe ID único. El setTimeout(200ms) solo habla si el ID sigue siendo el actual. Elimina race conditions en navegación ultra-rápida.
-- **`detenerVozGlobal()` vs `pararVoz()`**: `detenerVozGlobal` solo hace `cancel()` (para transición de slides, permite que el siguiente `speak()` funcione). `pararVoz` hace `pause()+cancel()` (para salir de teoría/unmount, agresivo). Chrome requiere `resume()` después de `pause()` antes de cualquier `speak()`.
-- **Botón con relleno de color** (botonFill state): width 0→100% en 1.2s linear. Hasta que llega al 100% (`botonListo = true`) el click no avanza. Previene skip ultra-rápido sin bloquear UX.
-- **Modo Test en `localStorage["modoTest"]`**: persiste entre páginas. En `/lecciones`: vidas=99 al cargar, todos los `supabase.from().insert/update` de XP/progreso van dentro de `if (!modoTest)`.
-- **Seed SQL con bug de campos**: `seed-niveles-6-7-8.sql` usó `respuesta` (en vez de `respuesta_correcta`), `explicacion` (en vez de `explicacion_error`), `opcion_multiple` (en vez de `multiple_choice`). Corregido con `fix-contenido-completo.sql` (JSONB key rename) y `fix-tipo-ejercicio.sql` (UPDATE tipo).
-- **Git push desde worktree**: siempre `git push origin HEAD:main`, nunca `git push` solo (la rama local no coincide con el remoto).
+- **Reestructura 5→8 niveles lineales**: eliminados los 4 sub-tiers por feedback (confusos). Ahora 8 niveles agrupados en 4 categorías visuales.
+- **`vozIdRef` counter**: cada `hablar()` recibe ID único. Elimina race conditions en navegación rápida.
+- **Botón con relleno de color** (`botonFill`): width 0→100% en 1.2s. Previene skip ultra-rápido.
+- **Modo Test en localStorage**: persiste entre páginas. Vidas=99, sin guardar XP/progreso.
 
 ### Funcionalidades completadas
 
-- `app/niveles/page.jsx` — reescrito completo: 8 niveles lineales, CATEGORIAS grouping, botón 🧪 Test
-- `app/lecciones/page.jsx` — múltiples edits: `vozIdRef`, `vozActivaRef`, `detenerVozGlobal`, `pararVoz`, `botonListo/botonFill`, modo test (99 vidas, sin guardar XP), `dificultadParam = 0` (sin filtro), siempre empieza en teoría
-- `seed-niveles-6-7-8.sql` — creado (ya ejecutado + fixes aplicados)
-- `fix-contenido-completo.sql` — reescritura teoría niveles 1/2 + rename campos JSONB en todos los niveles
-- `fix-tipo-ejercicio.sql` — `opcion_multiple` → `multiple_choice`
+- `app/niveles/page.jsx` reescrito: 8 niveles lineales, categorías, botón 🧪 Test
+- Niveles 6/7/8: IVA, Impuesto Renta, Liquidación (12 preguntas c/u)
+- `vozIdRef`, `botonListo/botonFill`, modo test completo
 
 ### Problemas resueltos
 
 | Problema | Fix |
 |----------|-----|
-| Voz sigue sonando al llegar a preguntas (skip rápido) | `vozIdRef` counter + `detenerVozGlobal()` (solo cancel) en cleanup |
-| Voz bloqueada después de `pause()` → `speak()` silencioso | `resume()` antes de cada `speak()` en `hablar()` |
-| Race condition: audio del slide anterior suena en el siguiente | `vozIdRef` — timeout abortado si ID no coincide |
-| Test mode: vidas 0 bloqueaba el juego | `setVidas(modoTest ? 99 : perfil.vidas ?? 5)` al cargar |
-| Test mode: XP se sumaba igual | `if (!modoTest)` en toda escritura a Supabase |
-| Verdadero/Falso siempre incorrecto | SQL UPDATE: `respuesta_correcta = "true"/"false"` donde era `"Verdadero"/"Falso"` |
-| Opciones de preguntas no aparecían (niveles 6-8) | `tipo_ejercicio = 'multiple_choice'` (era `opcion_multiple`) |
-| Campos JSONB con nombre equivocado (seed bug) | JSONB key rename con `jsonb_build_object` + `-` operator |
-| Teoría de niveles 1/2 no alineada con preguntas | Reescritura de teoría + 20 preguntas nuevas en `fix-contenido-completo.sql` |
-| Sub-tiers confusos (Junior/Senior) | Eliminados; ahora 8 niveles lineales con categorías visuales |
+| Voz sigue sonando al skip rápido | `vozIdRef` counter + `detenerVozGlobal()` |
+| Race condition audio entre slides | `vozIdRef` — timeout abortado si ID no coincide |
+| Preguntas VF siempre incorrectas | SQL UPDATE: `respuesta_correcta = "true"/"false"` |
+
+---
 
 ## [2026-05-12] — Sesión: Limpieza BD + integración Claude API
 
 ### Decisiones tomadas
 
-- **Claude Haiku** (`claude-haiku-4-5-20251001`) elegido sobre Sonnet para explicaciones: suficiente para texto educativo, ~4× más barato (~$0.003/sesión vs ~$0.013). Con $5 alcanza ~1,600 sesiones con errores.
-- **Una sola llamada al final** de la sesión (no por pregunta): se pasan todos los errores juntos, Claude devuelve un bloque por error. Más eficiente y evita latencia durante el juego.
-- **Formato fijo sin markdown**: el prompt pide `[N] CONCEPTO: / EJEMPLO: / ERROR: / PRACTICA:` sin asteriscos. Se parsea con regex en el route.
-- **Feedback inmediato simplificado**: el panel de feedback durante el juego muestra solo ✅/❌ + respuesta correcta + `explicacion_error` del campo en BD. La explicación IA completa va al final.
-- **`/api/explicar/route.js`** con try/catch completo: retorna `{ explicaciones: [], error: msg }` en caso de fallo (nunca 500 vacío). Permite que el cliente falle silenciosamente mostrando el fallback `explicacion_error`.
-- **9 lecciones `completar_espacio` convertidas a `multiple_choice`**: el motor del juego no tiene lógica para ese tipo. Contenido era bueno (preguntas de completar blancos), se añadieron 4 opciones por pregunta. SQL ejecutado directamente.
-- **RLS confirmado como ya activo**: al intentar re-ejecutar `supabase-policies.sql` dio error "policy already exists". Todas las tablas ya protegidas desde sesión anterior.
+- **Claude Haiku** elegido sobre Sonnet para explicaciones: ~4× más barato (~$0.003/sesión).
+- **Una sola llamada al final** de la sesión: todos los errores juntos, más eficiente.
+- **Separador `===`** entre bloques (en vez de `[N]`): Claude lo respeta siempre.
+- **`max_tokens: 2048`**: 1024 insuficiente para 3+ errores.
+- **9 lecciones `completar_espacio`** convertidas a `multiple_choice`.
 
 ### Funcionalidades completadas
 
-- `app/api/explicar/route.js` — API route Claude Haiku, parsea 4 secciones por error
-- `app/lecciones/page.jsx` — estado `explicacionesIA` + `cargandoIA`; llamada fetch en `siguiente()` al llegar a resultados; spinner + cards IA en pantalla resultados
-- BD: 9 lecciones convertidas de `completar_espacio` → `multiple_choice` con opciones reales
-- `@anthropic-ai/sdk` agregado a `package.json`
-- `ANTHROPIC_API_KEY` configurada en Vercel (falta saldo para funcionar)
-
-### Problemas resueltos
-
-| Problema | Fix |
-|----------|-----|
-| 9 lecciones `completar_espacio` rompían el juego | Convertidas a `multiple_choice` con opciones |
-| RLS "pendiente" en contexto | Confirmado ya activo — policy existía |
-| API route devolvía 500 vacío | try/catch + Response.json con error message |
-| Modelo `claude-haiku-4-5` incorrecto | Corregido a `claude-haiku-4-5-20251001` |
-
-## [2026-05-12 tarde] — Sesión: Claude API operativa + fix parseo múltiples errores
-
-### Decisiones tomadas
-
-- **Separador `===` en vez de `[N]`**: Claude no usaba los marcadores `[N]` consistentemente entre bloques, causando que solo se parseara el primer error. `===` es más robusto y Claude lo respeta siempre.
-- **`max_tokens: 2048`**: 1024 era insuficiente para 3+ errores (Claude cortaba la respuesta). 2048 cubre hasta ~10 errores por sesión.
-- **Formato `ERROR_N:` en el prompt**: renombrado para evitar colisión con el campo `ERROR:` en la respuesta. Hace el prompt más claro para Claude.
-- **Créditos Anthropic cargados**: $5 USD. API operativa a ~$0.003/sesión con errores.
-
-### Funcionalidades completadas
-
-- `app/api/explicar/route.js` — versión final con separador `===`, parseo robusto de N errores
-- Pantalla resultados: muestra las 4 secciones IA (📘 Concepto, 🔢 Ejemplo, ⚠️ Tu error, 🎯 Practica) para cada respuesta incorrecta
-- Fix "2" al final de PRACTICA: artefacto de parseo eliminado
+- `app/api/explicar/route.js` — Haiku, parseo 4 secciones por error con separador `===`
+- Pantalla resultados: spinner + cards IA (📘 Concepto, 🔢 Ejemplo, ⚠️ Tu error, 🎯 Practica)
+- Créditos Anthropic cargados ($5 USD)
 
 ### Problemas resueltos
 
 | Problema | Fix |
 |----------|-----|
 | Solo 1 explicación de N errores | Separador `===` + `max_tokens: 2048` |
-| Número suelto "2" al final de PRACTICA | Separador `===` elimina el artefacto |
-| API retornaba 400 (sin créditos) | Créditos cargados en console.anthropic.com |
+| 9 lecciones rompían el juego | Convertidas a `multiple_choice` con opciones |
+
+---
+
+## [2026-05-13] — Sesión: 4 modos IA + banco preguntas + sistema reportes
+
+### Decisiones tomadas
+
+- **Tutor con system prompt estricto**: solo responde contabilidad/Ecuador. Si se sale del tema responde frase fija.
+- **Práctica extra sin XP**: ejercicios generados por IA separados del juego oficial para no contaminar el balance.
+- **Banco `empresa_preguntas`**: preguntas generadas se guardan y reutilizan entre usuarios. Solo gasta tokens cuando el banco se agota. Campo `dificultad` (facil/normal/dificil).
+- **Dificultad adaptativa empresa**: 2 fallos→fácil, 6 aciertos seguidos→difícil, 3 fallos difícil→normal.
+- **Pregunta actual en localStorage**: evita regenerar al recargar página.
+- **Meses anteriores sin XP**: se puede repasar sin farmear.
+- **Sonnet solo para reportes**: Haiku para todo lo demás. Costo extra de Sonnet mínimo (pocos reportes).
+- **Pre-filtro automático**: usuario reporta → Sonnet decide si es error real → solo guarda si confirma error → admin solo ve las realmente malas.
+- **Panel admin por email**: `lotor210799@gmail.com` y `lotor5252@gmail.com`. URL `/admin` no vinculada en la app.
+
+### Funcionalidades completadas
+
+- `/tutor` — chat tutor IA por nivel con botones rápidos
+- `/practica` — práctica extra sin XP, banco reutilizable
+- `/empresa` — modo empresa simulada completo con dificultad adaptativa
+- `/admin` — panel admin con pre-filtro Sonnet
+- `api/tutor`, `api/generar-ejercicio`, `api/empresa`, `api/reportar`
+- `user_mistakes` — guarda errores del juego, historial pasado a Claude en explicaciones
+- 4 logros exclusivos del modo empresa
+- Títulos empresa visibles en ranking
+
+### Problemas resueltos
+
+| Problema | Fix |
+|----------|-----|
+| `useSearchParams` sin Suspense en Next.js 16 | `export const dynamic = "force-dynamic"` + Suspense wrapper |
+| Preguntas regeneradas al recargar | Guardar pregunta actual en localStorage |
+| Recargar generaba tokens nuevos | `if (!caso) generarCaso()` en useEffect |
+| JSX hermanos sin wrapper en practica | `<div>` envolviendo los dos botones |
+| Contradicción respuesta/explicación en IA | Prompt reformulado: primero respuesta, luego explicación, luego opciones incorrectas |
+| max_tokens 512 cortaba JSON | Aumentado a 1024 |
 
 <!-- Agregar nuevas sesiones aquí arriba de esta línea, con formato [YYYY-MM-DD] -->
