@@ -9,10 +9,14 @@ const supabase = createClient(
 
 export async function POST(req) {
   try {
-    const { nivelId, teoriaJson, preguntasVistasIds = [] } = await req.json()
+    const { nivelId, teoriaJson, preguntasVistasIds = [], dificultad = "normal" } = await req.json()
 
-    // 1. Buscar en banco preguntas no vistas
-    let query = supabase.from("nivel_preguntas").select("*").eq("nivel_id", nivelId)
+    // 1. Buscar en banco: misma dificultad, no vistas
+    let query = supabase
+      .from("nivel_preguntas")
+      .select("*")
+      .eq("nivel_id", nivelId)
+      .eq("dificultad", dificultad)
     if (preguntasVistasIds.length > 0) {
       query = query.not("id", "in", `(${preguntasVistasIds.join(",")})`)
     }
@@ -32,25 +36,43 @@ export async function POST(req) {
       })
     }
 
-    // 2. No hay en banco — generar con Haiku basado en la teoría del nivel
+    // 2. No hay en banco — leer preguntas existentes para evitar duplicados
+    const { data: existentes } = await supabase
+      .from("nivel_preguntas")
+      .select("pregunta")
+      .eq("nivel_id", nivelId)
+      .eq("dificultad", dificultad)
+      .limit(30)
+
+    const evitar = existentes?.length > 0
+      ? `\n\nEvita generar preguntas similares o iguales a estas que ya existen en el banco:\n${existentes.map(e => `- ${e.pregunta}`).join("\n")}`
+      : ""
+
     const slides = (teoriaJson || [])
       .map(s => `${s.titulo}: ${s.contenido}`)
       .join("\n\n")
+
+    const nivelDificultad =
+      dificultad === "facil"   ? "FÁCIL — conceptos básicos y directos, sin ambigüedad" :
+      dificultad === "dificil" ? "DIFÍCIL — aplicación de normas, casos con múltiples pasos o situaciones ambiguas" :
+                                 "NORMAL — comprensión y aplicación básica del concepto"
 
     const { content } = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
       messages: [{
         role: "user",
-        content: `Eres un experto en contabilidad ecuatoriana. Genera una pregunta de evaluación basada en esta teoría contable:
+        content: `Eres un experto en contabilidad ecuatoriana. Genera una pregunta de evaluación basada en esta teoría:
 
 ${slides}
 
+Dificultad: ${nivelDificultad}${evitar}
+
 Pasos obligatorios antes de responder:
-- La pregunta debe evaluar un concepto específico de la teoría anterior.
+- La pregunta debe evaluar un concepto específico de la teoría.
 - Define la respuesta correcta según normativa ecuatoriana (SRI, NIC, NIIF).
-- La explicacion debe justificar exactamente por qué esa es la respuesta correcta.
-- Crea 3 opciones incorrectas plausibles pero claramente erróneas.
+- La explicacion justifica exactamente por qué esa es la respuesta correcta.
+- Crea 3 opciones incorrectas plausibles pero erróneas.
 
 Reglas de formato OBLIGATORIAS:
 - La pregunta debe tener máximo 12 palabras (corta y directa).
@@ -72,7 +94,7 @@ Responde SOLO con este JSON, sin texto extra:
     if (!jsonMatch) throw new Error("Respuesta no es JSON válido")
     const p = JSON.parse(jsonMatch[0])
 
-    // 3. Guardar en banco para futuros usuarios
+    // 3. Guardar en banco con dificultad
     const { data: nueva } = await supabase
       .from("nivel_preguntas")
       .insert([{
@@ -81,6 +103,7 @@ Responde SOLO con este JSON, sin texto extra:
         opciones: p.opciones,
         respuesta_correcta: p.respuesta_correcta,
         explicacion: p.explicacion,
+        dificultad,
       }])
       .select("id")
       .single()

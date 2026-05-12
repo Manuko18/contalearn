@@ -68,6 +68,7 @@ function LeccionInner() {
   const preguntasRespRef  = useRef(0)   // preguntas respondidas (correcto + incorrecto)
   const xpSesionRef     = useRef(0)     // XP real ganado esta sesión (solo primeras veces)
   const [cargandoJuego, setCargandoJuego] = useState(false)
+  const [dificultad, setDificultad] = useState("normal")
   const [botonListo, setBotonListo] = useState(false)
   const [botonFill, setBotonFill] = useState(0)
   const [showFloatXP, setShowFloatXP] = useState(false)
@@ -296,6 +297,9 @@ function LeccionInner() {
     setCargandoJuego(true)
     const TOTAL = 5
     const storageKey = `vistas_nivel_${nivelId}`
+    const difKey = `dif_nivel_${nivelId}`
+    const dif = localStorage.getItem(difKey) || "normal"
+    setDificultad(dif)
     let vistas = JSON.parse(localStorage.getItem(storageKey) || "[]")
 
     // Fetch secuencial para acumular IDs vistos y evitar repetidos en esta sesión
@@ -309,6 +313,7 @@ function LeccionInner() {
             nivelId,
             teoriaJson: nivel?.teoria_json || [],
             preguntasVistasIds: vistas,
+            dificultad: dif,
           }),
         })
         const { pregunta } = await res.json()
@@ -478,6 +483,10 @@ function LeccionInner() {
       const pctFinal     = resultados.length > 0
         ? Math.round((numCorrectas / resultados.length) * 100)
         : 0
+      // Ajustar dificultad para la próxima sesión
+      const difKey = `dif_nivel_${nivelId}`
+      const nuevaDif = pctFinal >= 80 ? "dificil" : pctFinal <= 40 ? "facil" : "normal"
+      localStorage.setItem(difKey, nuevaDif)
       const isPerfect    = pctFinal === 100
       const isClean      = vidas >= vidasInicialesRef.current // no perdió vidas
       if (isPerfect) {
