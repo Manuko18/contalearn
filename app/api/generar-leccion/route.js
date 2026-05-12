@@ -111,7 +111,19 @@ export async function POST(req) {
     // tipo viene del cliente (orden aleatorio por sesión); fallback al patrón fijo
     const tipo = TIPOS.includes(tipoParam) ? tipoParam : TIPOS[angulo % TIPOS.length]
 
-    // 1. Buscar en banco: mismo slide, mismo tipo, misma dificultad, no vistas
+    const MAX_POR_DIFICULTAD = 10
+
+    // Contar total en banco para este nivel+dificultad
+    const { count: totalBanco } = await supabase
+      .from("nivel_preguntas")
+      .select("*", { count: "exact", head: true })
+      .eq("nivel_id", nivelId)
+      .eq("dificultad", dificultad)
+
+    const bancoLleno = (totalBanco ?? 0) >= MAX_POR_DIFICULTAD
+
+    // 1. Buscar en banco: mismo slide, mismo tipo, misma dificultad
+    // Si banco lleno: ignorar vistas (rota preguntas existentes, no genera más)
     let query = supabase
       .from("nivel_preguntas")
       .select("*")
@@ -119,7 +131,7 @@ export async function POST(req) {
       .eq("dificultad", dificultad)
       .eq("slide_idx", slideIdx)
       .eq("tipo", tipo)
-    if (preguntasVistasIds.length > 0) {
+    if (!bancoLleno && preguntasVistasIds.length > 0) {
       query = query.not("id", "in", `(${preguntasVistasIds.join(",")})`)
     }
     const { data: guardadas } = await query.limit(30)
@@ -137,6 +149,30 @@ export async function POST(req) {
         },
         fromCache: true,
       })
+    }
+
+    // Si banco lleno pero no hay para este slide+tipo específico, buscar sin filtro slide+tipo
+    if (bancoLleno) {
+      const { data: cualquiera } = await supabase
+        .from("nivel_preguntas")
+        .select("*")
+        .eq("nivel_id", nivelId)
+        .eq("dificultad", dificultad)
+        .limit(30)
+      if (cualquiera && cualquiera.length > 0) {
+        const p = cualquiera[Math.floor(Math.random() * cualquiera.length)]
+        return Response.json({
+          pregunta: {
+            id: p.id,
+            tipo: p.tipo || tipo,
+            pregunta: p.pregunta,
+            opciones: p.opciones ? p.opciones.sort(() => Math.random() - 0.5) : null,
+            respuesta_correcta: p.respuesta_correcta,
+            explicacion: p.explicacion,
+          },
+          fromCache: true,
+        })
+      }
     }
 
     // 2. Leer existentes del mismo slide+tipo para evitar duplicados
