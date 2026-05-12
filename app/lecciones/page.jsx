@@ -521,7 +521,7 @@ function LeccionInner() {
   }
 
   if (loading) return <LoadingConti texto="Cargando lección..." />
-  if (cargandoJuego) return <LoadingConti texto="Generando preguntas con IA..." />
+  if (cargandoJuego) return <LoadingConti texto="Preparando ejercicios..." />
   if (vidas <= 0) return <PantallaFin onVolver={() => router.push("/")} />
 
   // ── FASE TEORÍA ──

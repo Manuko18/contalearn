@@ -52,10 +52,15 @@ Pasos obligatorios antes de responder:
 - La explicacion debe justificar exactamente por qué esa es la respuesta correcta.
 - Crea 3 opciones incorrectas plausibles pero claramente erróneas.
 
+Reglas de formato OBLIGATORIAS:
+- La pregunta debe tener máximo 12 palabras (corta y directa).
+- Las opciones deben tener máximo 8 palabras cada una.
+- Nada de párrafos largos ni casos narrativos.
+
 Responde SOLO con este JSON, sin texto extra:
 {
-  "pregunta": "pregunta de evaluación (usa USD y contexto ecuatoriano si aplica)",
-  "opciones": ["opción correcta", "incorrecta 1", "incorrecta 2", "incorrecta 3"],
+  "pregunta": "pregunta corta y directa (máx 12 palabras)",
+  "opciones": ["opción correcta (máx 8 palabras)", "incorrecta 1", "incorrecta 2", "incorrecta 3"],
   "respuesta_correcta": "debe ser idéntica a opciones[0]",
   "explicacion": "justificación breve de por qué esa opción es correcta (máx 2 líneas)"
 }`,
