@@ -12,7 +12,7 @@ export async function POST(req) {
 
     const { content } = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 512,
+      max_tokens: 1024,
       messages: [{
         role: "user",
         content: `Eres un experto en contabilidad ecuatoriana. Genera un ejercicio de práctica para ContaLearn.
@@ -20,22 +20,18 @@ export async function POST(req) {
 Tema: ${nivelNombre}
 Descripción: ${nivelDescripcion}${evitar}
 
-INSTRUCCIONES (sigue este orden exacto):
-1. Elige un concepto específico del tema.
-2. Determina la respuesta CORRECTA según normativa ecuatoriana (SRI, NIC, NIIF).
-3. Escribe la explicación de POR QUÉ esa respuesta es correcta.
-4. Crea 3 opciones incorrectas pero plausibles.
-5. Verifica que la explicación justifique exactamente la respuesta_correcta antes de responder.
+Pasos obligatorios antes de responder:
+- Define la respuesta correcta según normativa ecuatoriana (SRI, NIC, NIIF).
+- Escribe la explicacion justificando ESA respuesta. La explicacion debe describir exactamente lo que dice respuesta_correcta.
+- Crea 3 opciones incorrectas plausibles.
 
-Responde SOLO con este JSON exacto, sin texto adicional:
+Responde SOLO con este JSON, sin texto extra:
 {
-  "pregunta": "pregunta clara sobre el tema (usa USD y contexto ecuatoriano)",
-  "respuesta_correcta": "la respuesta correcta",
-  "explicacion": "por qué ESA respuesta es correcta (debe coincidir 100% con respuesta_correcta)",
-  "opciones": ["respuesta_correcta va aquí también", "opción incorrecta 1", "opción incorrecta 2", "opción incorrecta 3"]
-}
-
-IMPORTANTE: opciones[0] debe ser igual a respuesta_correcta. El orden se mezclará automáticamente.`,
+  "pregunta": "pregunta sobre el tema (usa USD y contexto ecuatoriano)",
+  "opciones": ["opción correcta", "incorrecta 1", "incorrecta 2", "incorrecta 3"],
+  "respuesta_correcta": "debe ser idéntica a opciones[0]",
+  "explicacion": "justificación de por qué esa opción es la correcta (máx 2 líneas)"
+}`,
       }],
     })
 
