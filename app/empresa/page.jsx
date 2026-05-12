@@ -40,7 +40,7 @@ function EmpresaInner() {
   const [respondido, setRespondido] = useState(false)
 
   const [correctasMes, setCorrectasMes] = useState(0)
-  const [situacionesAnteriores, setSituacionesAnteriores] = useState([])
+  const [preguntasVistasIds, setPreguntasVistasIds] = useState([])
 
   const [curAch, setCurAch] = useState(null)
   const [achQueue, setAchQueue] = useState([])
@@ -77,14 +77,14 @@ function EmpresaInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mes: perfil?.empresa_mes ?? 0,
-          situacionesAnteriores,
+          preguntasVistasIds,
         }),
       })
       const data = await res.json()
       if (data.caso) {
         setCaso(data.caso)
         setMesNombre(data.mes)
-        setSituacionesAnteriores(prev => [...prev, data.caso.situacion])
+        if (data.id) setPreguntasVistasIds(prev => [...prev, data.id])
       }
     } catch {
       setCaso(null)

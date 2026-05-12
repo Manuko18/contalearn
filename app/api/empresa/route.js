@@ -1,20 +1,46 @@
 import Anthropic from "@anthropic-ai/sdk"
+import { createClient } from "@supabase/supabase-js"
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+)
 
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
                "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
 export async function POST(req) {
   try {
-    const { mes, situacionesAnteriores = [] } = await req.json()
+    const { mes, preguntasVistasIds = [] } = await req.json()
 
     const mesNombre = MESES[mes % 12]
     const dificultad = mes < 3 ? "básica" : mes < 6 ? "intermedia" : "avanzada"
-    const evitar = situacionesAnteriores.length > 0
-      ? `\nEvita repetir estas situaciones ya usadas: ${situacionesAnteriores.slice(-4).join(" | ")}`
-      : ""
 
+    // 1. Buscar pregunta guardada que no haya visto el usuario
+    let query = supabase
+      .from("empresa_preguntas")
+      .select("*")
+      .eq("mes", mes)
+    if (preguntasVistasIds.length > 0) {
+      query = query.not("id", "in", `(${preguntasVistasIds.join(",")})`)
+    }
+    const { data: guardadas } = await query.limit(20)
+
+    if (guardadas && guardadas.length > 0) {
+      // Elegir una al azar del banco
+      const pregunta = guardadas[Math.floor(Math.random() * guardadas.length)]
+      const caso = {
+        situacion: pregunta.situacion,
+        pregunta: pregunta.pregunta,
+        opciones: pregunta.opciones.sort(() => Math.random() - 0.5),
+        respuesta_correcta: pregunta.respuesta_correcta,
+        explicacion: pregunta.explicacion,
+      }
+      return Response.json({ caso, mes: mesNombre, id: pregunta.id, fromCache: true })
+    }
+
+    // 2. No hay en el banco — generar con IA
     const { content } = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
@@ -22,7 +48,7 @@ export async function POST(req) {
         role: "user",
         content: `Eres un experto en contabilidad ecuatoriana. Genera un caso contable para "Distribuidora Andes S.A." (Quito).
 
-Mes: ${mesNombre}. Dificultad: ${dificultad}.${evitar}
+Mes: ${mesNombre}. Dificultad: ${dificultad}.
 
 Pasos obligatorios antes de responder:
 - Define la respuesta correcta según normativa ecuatoriana (SRI, NIC, NIIF).
@@ -45,8 +71,23 @@ Responde SOLO con este JSON, sin texto extra:
     if (!jsonMatch) throw new Error("Respuesta no es JSON válido")
 
     const caso = JSON.parse(jsonMatch[0])
+
+    // 3. Guardar en el banco para futuros usuarios
+    const { data: nueva } = await supabase
+      .from("empresa_preguntas")
+      .insert([{
+        mes,
+        situacion: caso.situacion,
+        pregunta: caso.pregunta,
+        opciones: caso.opciones,
+        respuesta_correcta: caso.respuesta_correcta,
+        explicacion: caso.explicacion,
+      }])
+      .select("id")
+      .single()
+
     caso.opciones = caso.opciones.sort(() => Math.random() - 0.5)
-    return Response.json({ caso, mes: mesNombre })
+    return Response.json({ caso, mes: mesNombre, id: nueva?.id, fromCache: false })
   } catch (err) {
     console.error("Error en /api/empresa:", err?.message || err)
     return Response.json({ error: err?.message }, { status: 500 })
