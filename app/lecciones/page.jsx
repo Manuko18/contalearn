@@ -295,33 +295,43 @@ function LeccionInner() {
   const cargarPreguntasIA = async () => {
     setCargandoJuego(true)
     const TOTAL = 5
-    const results = await Promise.allSettled(
-      Array.from({ length: TOTAL }, () =>
-        fetch("/api/generar-leccion", {
+    const storageKey = `vistas_nivel_${nivelId}`
+    let vistas = JSON.parse(localStorage.getItem(storageKey) || "[]")
+
+    // Fetch secuencial para acumular IDs vistos y evitar repetidos en esta sesión
+    const pqs = []
+    for (let i = 0; i < TOTAL; i++) {
+      try {
+        const res = await fetch("/api/generar-leccion", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             nivelId,
             teoriaJson: nivel?.teoria_json || [],
-            preguntasVistasIds: [],
+            preguntasVistasIds: vistas,
           }),
-        }).then(r => r.json())
-      )
-    )
-    const pqs = results
-      .filter(r => r.status === "fulfilled" && r.value?.pregunta)
-      .map(r => ({
-        id: `ia_${r.value.pregunta.id ?? Math.random()}`,
-        bancoId: r.value.pregunta.id ?? null,
-        esIA: true,
-        tipo_ejercicio: "multiple_choice",
-        contenido_json: {
-          pregunta: r.value.pregunta.pregunta,
-          opciones: r.value.pregunta.opciones,
-          respuesta_correcta: r.value.pregunta.respuesta_correcta,
-          explicacion_error: r.value.pregunta.explicacion,
-        },
-      }))
+        })
+        const { pregunta } = await res.json()
+        if (pregunta) {
+          pqs.push({
+            id: `ia_${pregunta.id ?? Math.random()}`,
+            bancoId: pregunta.id ?? null,
+            esIA: true,
+            tipo_ejercicio: "multiple_choice",
+            contenido_json: {
+              pregunta: pregunta.pregunta,
+              opciones: pregunta.opciones,
+              respuesta_correcta: pregunta.respuesta_correcta,
+              explicacion_error: pregunta.explicacion,
+            },
+          })
+          if (pregunta.id) vistas = [...vistas, pregunta.id]
+        }
+      } catch {}
+    }
+
+    localStorage.setItem(storageKey, JSON.stringify(vistas))
+
     setLecciones(mezclar(pqs.length > 0 ? pqs : []))
     setCargandoJuego(false)
     setFase("juego")
