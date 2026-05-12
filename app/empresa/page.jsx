@@ -139,7 +139,8 @@ function EmpresaInner() {
       const nuevosFallos = fallosSegidos + 1
       setFallosSegidos(nuevosFallos)
       setAciertosSegidos(0)
-      if (nuevosFallos >= 2) setDificultad("facil")
+      if (nuevosFallos >= 2 && dificultad === "normal") setDificultad("facil")
+      if (nuevosFallos >= 3 && dificultad === "dificil") setDificultad("normal")
       return
     }
 
@@ -147,6 +148,7 @@ function EmpresaInner() {
     setAciertosSegidos(nuevosAciertos)
     setFallosSegidos(0)
     if (nuevosAciertos >= 3 && dificultad === "facil") setDificultad("normal")
+    if (nuevosAciertos >= 6 && dificultad === "normal") setDificultad("dificil")
 
     const mesJugando = mesActivo ?? perfil?.empresa_mes ?? 0
     const esRepaso = mesJugando < (perfil?.empresa_mes ?? 0)
@@ -233,9 +235,8 @@ function EmpresaInner() {
                 {tituloActual.titulo
                   ? `${tituloActual.badge} ${tituloActual.titulo} · Mes ${mes + 1}`
                   : `Mes ${mes + 1} — ${MESES[mes % 12]}`}
-                {dificultad === "facil" && (
-                  <span className="ml-2 text-blue-400 font-bold">· Modo fácil 🎯</span>
-                )}
+                {dificultad === "facil" && <span className="ml-2 text-blue-400 font-bold">· Fácil 🎯</span>}
+                {dificultad === "dificil" && <span className="ml-2 text-red-400 font-bold">· Difícil 🔥</span>}
               </p>
             </div>
             <div className="text-right flex-shrink-0">

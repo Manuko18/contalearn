@@ -23,6 +23,7 @@ export async function POST(req) {
       .select("*")
       .eq("mes", mes)
     if (difUsuario === "facil") query = query.eq("dificultad", "facil")
+    if (difUsuario === "dificil") query = query.eq("dificultad", "dificil")
     if (preguntasVistasIds.length > 0) {
       query = query.not("id", "in", `(${preguntasVistasIds.join(",")})`)
     }
@@ -49,7 +50,7 @@ export async function POST(req) {
         role: "user",
         content: `Eres un experto en contabilidad ecuatoriana. Genera un caso contable para "Distribuidora Andes S.A." (Quito).
 
-Mes: ${mesNombre}. Dificultad: ${difUsuario === "facil" ? "FÁCIL — concepto básico y directo, sin ambigüedad" : dificultadMes}.
+Mes: ${mesNombre}. Dificultad: ${difUsuario === "facil" ? "FÁCIL — concepto básico y directo, sin ambigüedad" : difUsuario === "dificil" ? "DIFÍCIL — caso complejo con múltiples pasos, normas combinadas o situaciones ambiguas" : dificultadMes}.
 
 Pasos obligatorios antes de responder:
 - Define la respuesta correcta según normativa ecuatoriana (SRI, NIC, NIIF).
@@ -83,7 +84,7 @@ Responde SOLO con este JSON, sin texto extra:
         opciones: caso.opciones,
         respuesta_correcta: caso.respuesta_correcta,
         explicacion: caso.explicacion,
-        dificultad: difUsuario === "facil" ? "facil" : "normal",
+        dificultad: difUsuario,
       }])
       .select("id")
       .single()
