@@ -302,6 +302,12 @@ function LeccionInner() {
     setDificultad(dif)
     let vistas = JSON.parse(localStorage.getItem(storageKey) || "[]")
 
+    // Mezclar tipos aleatoriamente para que el orden varíe cada sesión
+    const baseTypes = ["multiple_choice", "verdadero_falso", "completar_espacio",
+                       "multiple_choice", "verdadero_falso", "completar_espacio",
+                       "multiple_choice", "verdadero_falso", "multiple_choice", "completar_espacio"]
+    const tiposSesion = [...baseTypes].sort(() => Math.random() - 0.5)
+
     // Fetch secuencial — acumula IDs y textos para evitar repetidos en esta sesión
     const pqs = []
     const textosEnSesion = []
@@ -317,6 +323,7 @@ function LeccionInner() {
             preguntasEnSesion: textosEnSesion,
             dificultad: dif,
             angulo: i,
+            tipo: tiposSesion[i],
           }),
         })
         const { pregunta } = await res.json()

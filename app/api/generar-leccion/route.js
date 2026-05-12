@@ -97,7 +97,7 @@ Responde SOLO con este JSON, sin texto extra:
 
 export async function POST(req) {
   try {
-    const { nivelId, teoriaJson, preguntasVistasIds = [], preguntasEnSesion = [], dificultad = "normal", angulo = 0 } = await req.json()
+    const { nivelId, teoriaJson, preguntasVistasIds = [], preguntasEnSesion = [], dificultad = "normal", angulo = 0, tipo: tipoParam } = await req.json()
 
     const allSlides = teoriaJson || []
     const slideIdx = allSlides.length > 0 ? angulo % allSlides.length : 0
@@ -106,7 +106,8 @@ export async function POST(req) {
       ? `${slideActual.titulo}: ${slideActual.contenido}`
       : allSlides.map(s => `${s.titulo}: ${s.contenido}`).join("\n\n")
 
-    const tipo = TIPOS[angulo % TIPOS.length]
+    // tipo viene del cliente (orden aleatorio por sesión); fallback al patrón fijo
+    const tipo = TIPOS.includes(tipoParam) ? tipoParam : TIPOS[angulo % TIPOS.length]
 
     // 1. Buscar en banco: mismo slide, mismo tipo, misma dificultad, no vistas
     let query = supabase
