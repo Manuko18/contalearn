@@ -195,13 +195,17 @@ function EmpresaInner() {
   const reportarError = async () => {
     if (!caso || reportado) return
     setReportado(true)
-    await supabase.from("reportes_preguntas").insert([{
-      pregunta_id: preguntaActivaId,
-      pregunta_texto: caso.situacion + " " + caso.pregunta,
-      respuesta_correcta: caso.respuesta_correcta,
-      explicacion: caso.explicacion,
-      reportado_por: user?.id,
-    }])
+    await fetch("/api/reportar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pregunta_id: preguntaActivaId,
+        pregunta_texto: caso.situacion + " " + caso.pregunta,
+        respuesta_correcta: caso.respuesta_correcta,
+        explicacion: caso.explicacion,
+        reportado_por: user?.id,
+      }),
+    })
   }
 
   const esCorrecta = (op) => op === caso?.respuesta_correcta

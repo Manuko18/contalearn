@@ -52,13 +52,17 @@ function PracticaInner() {
   const reportarError = async () => {
     if (!ejercicio || reportado) return
     setReportado(true)
-    await supabase.from("reportes_preguntas").insert([{
-      pregunta_id: null,
-      pregunta_texto: ejercicio.pregunta,
-      respuesta_correcta: ejercicio.respuesta_correcta,
-      explicacion: ejercicio.explicacion,
-      reportado_por: user?.id,
-    }])
+    await fetch("/api/reportar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pregunta_id: null,
+        pregunta_texto: ejercicio.pregunta,
+        respuesta_correcta: ejercicio.respuesta_correcta,
+        explicacion: ejercicio.explicacion,
+        reportado_por: user?.id,
+      }),
+    })
   }
 
   const generarPregunta = async () => {
