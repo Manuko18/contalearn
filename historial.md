@@ -256,4 +256,41 @@ SMTP               Gmail smtp.gmail.com:587 App Password
 | Contradicción respuesta/explicación en IA | Prompt reformulado: primero respuesta, luego explicación, luego opciones incorrectas |
 | max_tokens 512 cortaba JSON | Aumentado a 1024 |
 
+---
+
+## [2026-05-14] — Sesión: Lecciones migradas a IA + progresión de dificultad
+
+### Decisiones tomadas
+
+- **Eliminar preguntas estáticas de `lecciones`**: el juego ya no carga de la tabla `lecciones`. Todo viene de IA (banco `nivel_preguntas`). La tabla `lecciones` queda en BD pero sin uso en el juego.
+- **Banco `nivel_preguntas`** por nivel/dificultad/slide_idx/tipo: igual que empresa. Límite 20 por dificultad (60 máximo por nivel). Cuando banco lleno, rota existentes sin generar más.
+- **Rotación por slide**: cada pregunta se ancla a un slide específico de `teoria_json` usando `angulo % slides.length`. Garantiza que el juego evalúe toda la teoría, no solo el primer concepto.
+- **5 ángulos de pregunta**: Definición · Ejemplo práctico · Comparación · Norma específica · Error común. Asignados por índice, evitan reformulaciones del mismo concepto.
+- **3 tipos de pregunta**: `multiple_choice`, `verdadero_falso`, `completar_espacio`. Orden aleatorio por sesión (lista de 10 mezclada al inicio).
+- **Anti-duplicados doble**: banco existente + preguntas ya generadas en la misma sesión se pasan a Haiku con instrucción "COMPLETAMENTE DIFERENTE".
+- **`preguntasVistasIds` en localStorage** por nivel: evita repetir del banco entre sesiones.
+- **Progresión fácil→normal→difícil en `progreso_nivel`**: tabla nueva con PK (user_id, nivel_id, dificultad). Se guarda al aprobar (≥70%). El siguiente nivel se desbloquea cuando el anterior tiene 'dificil' completado.
+- **XP siempre**: +10 por acierto sin check anti-farmeo (las preguntas rotan, no hay ID fijo que bloquear).
+- **`completar_espacio` respuesta única**: prompt fuerza máx 2 palabras, sin alternativas ("X o Y" prohibido).
+- **10 preguntas por sesión**: aumentado desde 5 para mejor cobertura de la teoría.
+- **Dificultad desde DB no localStorage**: al entrar a un nivel se carga `progreso_nivel` y se deriva la dificultad actual.
+
+### Funcionalidades completadas
+
+- `api/generar-leccion/route.js` — banco + Haiku, dificultad, slide_idx, tipo, anti-duplicados
+- `lecciones/page.jsx` — migrado a IA completo, badge dificultad, mensajes progresión en resultados
+- `niveles/page.jsx` — desbloqueo por `progreso_nivel`, cards muestran 3 badges (🟢/🟡/🔴)
+- Tabla `progreso_nivel` en Supabase (con RLS)
+- Tabla `nivel_preguntas` con columnas: dificultad, slide_idx, tipo
+
+### Problemas resueltos
+
+| Problema | Fix |
+|----------|-----|
+| 5 preguntas iguales por tema único | Ángulos forzados (definición/ejemplo/norma/etc.) + slide específico |
+| Preguntas solo del primer slide | `slideIdx = angulo % allSlides.length` — cada pregunta ancla a un slide |
+| Respuesta completar con "X o Y" | Prompt reforzado: máx 2 palabras, sin alternativas |
+| Banco crecía infinito | Límite 20/dificultad; si banco lleno, sirve existentes |
+| Dificultad no persistía entre dispositivos | Migrado de localStorage a tabla `progreso_nivel` en Supabase |
+
 <!-- Agregar nuevas sesiones aquí arriba de esta línea, con formato [YYYY-MM-DD] -->

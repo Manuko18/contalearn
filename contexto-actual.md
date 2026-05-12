@@ -1,5 +1,5 @@
 # ContaLearn — Contexto actual
-> Última actualización: 2026-05-13 (sesión 3)
+> Última actualización: 2026-05-14 (sesión 4)
 
 ---
 
@@ -7,25 +7,28 @@
 
 - Login / registro / recuperar contraseña ✅
 - Dashboard: XP, vidas, racha, rango, misiones, botón 🏢 Modo Empresa ✅
-- 8 niveles lineales (Básico/Intermedio/Avanzado/Experto), desbloqueo secuencial ✅
-- Modo 🧪 Test (activo en producción — pendiente quitar) ✅
+- 8 niveles lineales (Básico/Intermedio/Avanzado/Experto) ✅
+- **Desbloqueo por progresión**: Fácil → Normal → Difícil → desbloquea siguiente nivel ✅
 - Teoría con voz sincronizada + juego: timer 30s, vidas, combo, sonidos, partículas ✅
+- **Preguntas IA** en lecciones: 10 preguntas/sesión, 3 tipos (mc/vf/completar), banco `nivel_preguntas` ✅
+  - Rota entre slides de `teoria_json` — cubre toda la teoría del nivel
+  - Orden de tipos aleatorio por sesión
+  - Anti-duplicados: pasa preguntas existentes + sesión actual a Haiku
+  - Límite banco: 20 por dificultad (60 máximo por nivel)
+  - Badge de dificultad en juego (🟢/🟡/🔴)
 - Explicaciones IA al final (Haiku + historial `user_mistakes`) ✅
-- XP, progreso, ranking con títulos empresa, misiones, logros, RLS ✅
-- **Tutor IA** (`/tutor?nivel=ID`): chat solo temas contables/Ecuador, botones rápidos ✅
-- **Práctica extra** (`/practica?nivel=ID`): ejercicios Haiku sin XP, banco reutilizable ✅
-- **Empresa simulada** (`/empresa`): Distribuidora Andes S.A., +5 XP/acierto, avance mensual ✅
-  - Dificultad adaptativa: 2 fallos→fácil, 6 aciertos→difícil, 3 fallos difícil→normal
-  - Banco `empresa_preguntas` con campo `dificultad`, reutilizable entre usuarios
-  - Meses anteriores jugables sin XP · pregunta actual en localStorage
-- **Sistema reportes**: botón ⚠️ en empresa/práctica → Sonnet pre-filtra → panel `/admin` ✅
-- **Panel admin** (`/admin`): solo `lotor210799@gmail.com` y `lotor5252@gmail.com` ✅
+- XP +10 por acierto · vidas · combo · ranking con títulos empresa · misiones · logros ✅
+- **Tutor IA** (`/tutor?nivel=ID`) ✅
+- **Práctica extra** (`/practica?nivel=ID`): Haiku sin XP, banco reutilizable ✅
+- **Empresa simulada** (`/empresa`): dificultad adaptativa, banco `empresa_preguntas` ✅
+- **Sistema reportes**: ⚠️ → Sonnet pre-filtra → panel `/admin` ✅
+- Modo 🧪 Test activo en producción (pendiente quitar)
 
 ---
 
 ## En qué punto quedamos
 
-Sesión 2026-05-13: 4 modos IA completos + sistema de reportes con pre-filtro Sonnet. Todo en producción.
+Sesión 2026-05-14: lecciones completamente migradas a IA con banco, progresión fácil→normal→difícil para desbloquear niveles, tipos variados de preguntas.
 
 ---
 
@@ -45,6 +48,7 @@ Sesión 2026-05-13: 4 modos IA completos + sistema de reportes con pre-filtro So
 | Modo 🧪 Test activo en producción | Medio | Quitar cuando terminen pruebas |
 | Logros sin columnas BD (`max_combo`, etc.) | Bajo | Funciona con `?? 0` |
 | Imágenes en preguntas (`imagen_url`) | Bajo | Columna existe, sin URLs |
+| Tabla `lecciones` ya no se usa en el juego | Bajo | Existe en BD pero lecciones usa solo IA |
 
 ---
 
@@ -60,26 +64,31 @@ Sesión 2026-05-13: 4 modos IA completos + sistema de reportes con pre-filtro So
 
 ```
 app/
-  page.jsx                  Dashboard
-  niveles/page.jsx          8 niveles + 🤖 tutor + 🎯 práctica por nivel
-  lecciones/page.jsx        Motor del juego (archivo más grande)
-  ranking/page.jsx          Tabla + titulo_empresa
-  tutor/page.jsx            Chat tutor IA
-  practica/page.jsx         Práctica extra sin XP
-  empresa/page.jsx          Modo empresa simulada
-  admin/page.jsx            Panel admin (emails autorizados)
-  api/explicar/route.js     Haiku — explicaciones fin de sesión + historial errores
-  api/tutor/route.js        Haiku — chat tutor
-  api/generar-ejercicio/    Haiku — ejercicios práctica
-  api/empresa/route.js      Haiku — casos empresa (banco + dificultad adaptativa)
-  api/reportar/route.js     Sonnet — pre-filtro reportes
+  page.jsx                    Dashboard
+  niveles/page.jsx            8 niveles + desbloqueo por progreso_nivel
+  lecciones/page.jsx          Motor del juego (IA, banco, progresión dificultad)
+  ranking/page.jsx            Tabla + titulo_empresa
+  tutor/page.jsx              Chat tutor IA
+  practica/page.jsx           Práctica extra sin XP
+  empresa/page.jsx            Modo empresa simulada
+  admin/page.jsx              Panel admin (emails autorizados)
+  api/explicar/route.js       Haiku — explicaciones fin de sesión
+  api/tutor/route.js          Haiku — chat tutor
+  api/generar-ejercicio/      Haiku — ejercicios práctica (sin banco)
+  api/generar-leccion/        Haiku — preguntas lecciones (banco nivel_preguntas)
+  api/empresa/route.js        Haiku — casos empresa (banco empresa_preguntas)
+  api/reportar/route.js       Sonnet — pre-filtro reportes
 ```
 
 **BD:**
 - `users` — xp_total, racha_actual, vidas, empresa_mes, titulo_empresa
-- `niveles` · `lecciones` · `progreso_usuario` · `misiones_diarias`
-- `user_mistakes` — errores juego principal por usuario/nivel
-- `empresa_preguntas` — banco preguntas empresa (campo `dificultad`: facil/normal/dificil)
-- `reportes_preguntas` — reportes pre-filtrados por Sonnet
+- `niveles` — titulo, descripcion, emoji, orden, teoria_json (slides)
+- `lecciones` — existe pero ya no se usa en el juego (migrado a IA)
+- `progreso_nivel` — user_id, nivel_id, dificultad (PK triple) — controla desbloqueo
+- `nivel_preguntas` — banco IA lecciones (nivel_id, pregunta, opciones jsonb, respuesta_correcta, explicacion, dificultad, slide_idx, tipo)
+- `user_mistakes` — errores juego por usuario/nivel
+- `empresa_preguntas` — banco IA empresa (dificultad: facil/normal/dificil)
+- `reportes_preguntas` — reportes pre-filtrados
+- `misiones_diarias` · `progreso_usuario` (legacy)
 
 **Git push siempre:** `git push origin HEAD:main`
