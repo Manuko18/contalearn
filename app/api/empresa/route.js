@@ -20,20 +20,27 @@ export async function POST(req) {
       max_tokens: 512,
       messages: [{
         role: "user",
-        content: `Eres generador de casos contables para una empresa ecuatoriana ficticia llamada "Distribuidora Andes S.A." ubicada en Quito.
+        content: `Eres un experto en contabilidad ecuatoriana. Genera un caso contable para "Distribuidora Andes S.A." (Quito).
 
-Mes actual: ${mesNombre}. Dificultad: ${dificultad}.${evitar}
+Mes: ${mesNombre}. Dificultad: ${dificultad}.${evitar}
 
-Genera UNA situación contable realista que le ocurre a esta empresa en ${mesNombre}. Usa montos en USD, menciona SRI/IESS/RUC cuando aplique.
+INSTRUCCIONES (sigue este orden exacto):
+1. Piensa en una situación contable real que ocurre en ${mesNombre}.
+2. Determina cuál es la acción contable CORRECTA según las normas ecuatorianas (SRI, NIC, NIIF).
+3. Escribe la explicación de POR QUÉ esa acción es correcta.
+4. Crea 3 opciones incorrectas pero plausibles.
+5. Verifica que la explicación justifique exactamente la respuesta_correcta antes de responder.
 
 Responde SOLO con este JSON exacto, sin texto adicional:
 {
-  "situacion": "descripción breve de la situación que ocurrió (1-2 oraciones)",
+  "situacion": "descripción breve de la situación (1-2 oraciones, usa USD y datos ecuatorianos)",
   "pregunta": "¿Qué debe hacer el contador?",
-  "opciones": ["opción A", "opción B", "opción C", "opción D"],
-  "respuesta_correcta": "texto exacto de la opción correcta",
-  "explicacion": "por qué esa es la acción correcta (2 líneas máx)"
-}`,
+  "respuesta_correcta": "la acción correcta según normativa ecuatoriana",
+  "explicacion": "por qué ESA respuesta es correcta (debe coincidir 100% con respuesta_correcta)",
+  "opciones": ["respuesta_correcta va aquí también", "opción incorrecta 1", "opción incorrecta 2", "opción incorrecta 3"]
+}
+
+IMPORTANTE: opciones[0] debe ser igual a respuesta_correcta. El orden se mezclará automáticamente.`,
       }],
     })
 
@@ -42,6 +49,7 @@ Responde SOLO con este JSON exacto, sin texto adicional:
     if (!jsonMatch) throw new Error("Respuesta no es JSON válido")
 
     const caso = JSON.parse(jsonMatch[0])
+    caso.opciones = caso.opciones.sort(() => Math.random() - 0.5)
     return Response.json({ caso, mes: mesNombre })
   } catch (err) {
     console.error("Error en /api/empresa:", err?.message || err)

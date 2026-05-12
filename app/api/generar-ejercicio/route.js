@@ -15,20 +15,27 @@ export async function POST(req) {
       max_tokens: 512,
       messages: [{
         role: "user",
-        content: `Eres un generador de ejercicios de contabilidad ecuatoriana para la app ContaLearn.
+        content: `Eres un experto en contabilidad ecuatoriana. Genera un ejercicio de práctica para ContaLearn.
 
-Tema del nivel: ${nivelNombre}
+Tema: ${nivelNombre}
 Descripción: ${nivelDescripcion}${evitar}
 
-Genera UNA pregunta de opción múltiple sobre este tema. Usa contexto ecuatoriano (SRI, IESS, RUC, USD).
+INSTRUCCIONES (sigue este orden exacto):
+1. Elige un concepto específico del tema.
+2. Determina la respuesta CORRECTA según normativa ecuatoriana (SRI, NIC, NIIF).
+3. Escribe la explicación de POR QUÉ esa respuesta es correcta.
+4. Crea 3 opciones incorrectas pero plausibles.
+5. Verifica que la explicación justifique exactamente la respuesta_correcta antes de responder.
 
 Responde SOLO con este JSON exacto, sin texto adicional:
 {
-  "pregunta": "texto de la pregunta",
-  "opciones": ["opción A", "opción B", "opción C", "opción D"],
-  "respuesta_correcta": "texto exacto de la opción correcta",
-  "explicacion": "por qué esa es la respuesta correcta (2 líneas máx)"
-}`,
+  "pregunta": "pregunta clara sobre el tema (usa USD y contexto ecuatoriano)",
+  "respuesta_correcta": "la respuesta correcta",
+  "explicacion": "por qué ESA respuesta es correcta (debe coincidir 100% con respuesta_correcta)",
+  "opciones": ["respuesta_correcta va aquí también", "opción incorrecta 1", "opción incorrecta 2", "opción incorrecta 3"]
+}
+
+IMPORTANTE: opciones[0] debe ser igual a respuesta_correcta. El orden se mezclará automáticamente.`,
       }],
     })
 
@@ -37,6 +44,7 @@ Responde SOLO con este JSON exacto, sin texto adicional:
     if (!jsonMatch) throw new Error("Respuesta no es JSON válido")
 
     const ejercicio = JSON.parse(jsonMatch[0])
+    ejercicio.opciones = ejercicio.opciones.sort(() => Math.random() - 0.5)
     return Response.json({ ejercicio })
   } catch (err) {
     console.error("Error en /api/generar-ejercicio:", err?.message || err)
