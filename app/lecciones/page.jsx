@@ -11,6 +11,8 @@ import EpicMoment from "../../components/EpicMoment"
 import AchievementToast from "../../components/AchievementToast"
 import { sound } from "../../lib/audio"
 import { checkNewAchievements } from "../../lib/achievements"
+import { getRankKey, RANK_THEMES } from "../../lib/rankTheme"
+import Particles from "../../components/Particles"
 
 const TIEMPO_POR_PREGUNTA = 30
 
@@ -73,6 +75,7 @@ function LeccionInner() {
   const [botonFill, setBotonFill] = useState(0)
   const [showFloatXP, setShowFloatXP] = useState(false)
   const [epicEvent, setEpicEvent]     = useState(null)
+  const [rankUpKey, setRankUpKey]     = useState(0)
   const [achQueue, setAchQueue]       = useState([])
   const [explicacionesIA, setExplicacionesIA] = useState([])
   const [cargandoIA, setCargandoIA] = useState(false)
@@ -395,12 +398,25 @@ function LeccionInner() {
       }
       await actualizarRacha()
       const nuevoXp = xp + 10
+      const rangoAntes = getRankKey(xp)
+      const rangoNuevo = getRankKey(nuevoXp)
       setXp(nuevoXp)
       setXpGanado(prev => prev + 10)
       xpSesionRef.current += 10
       setShowFloatXP(true)
       setTimeout(() => setShowFloatXP(false), 950)
       await supabase.from("users").update({ xp_total: nuevoXp }).eq("id", user.id)
+      if (rangoNuevo !== rangoAntes) {
+        sound.rankUp()
+        setRankUpKey(k => k + 1)
+        setEpicEvent({
+          type: "rankUp",
+          data: {
+            title:    `${RANK_THEMES[rangoNuevo].emoji} ${RANK_THEMES[rangoNuevo].name}`,
+            subtitle: "¡Nuevo rango desbloqueado!",
+          },
+        })
+      }
     } else {
       sound.incorrect()
       emitContiEvent("error")
@@ -430,8 +446,17 @@ function LeccionInner() {
     }])
   }
 
+  function getLunes() {
+    const hoy = new Date()
+    const dia = hoy.getDay()
+    const diff = dia === 0 ? -6 : 1 - dia
+    const lunes = new Date(hoy)
+    lunes.setDate(hoy.getDate() + diff)
+    return lunes.toISOString().split("T")[0]
+  }
+
   // ── Actualizar misiones al terminar la sesión ──
-  const actualizarMisiones = async (vidasFinales) => {
+  const actualizarMisiones = async (vidasFinales, nivelCompletado = false) => {
     if (!user) return
     const hoy = new Date().toISOString().split("T")[0]
     const { data: misiones } = await supabase
@@ -488,18 +513,45 @@ function LeccionInner() {
       setXp(nuevoXp)
       await supabase.from("users").update({ xp_total: nuevoXp }).eq("id", user.id)
     }
+
+    // ── Misión semanal ──
+    if (nivelCompletado) {
+      const lunes = getLunes()
+      const { data: ms } = await supabase
+        .from("misiones_diarias")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("fecha", lunes)
+        .eq("tipo", "completar_niveles_semana")
+        .maybeSingle()
+      if (ms && !ms.completada) {
+        const nuevoProgreso = Math.min(ms.meta, ms.progreso + 1)
+        const completada = nuevoProgreso >= ms.meta
+        await supabase.from("misiones_diarias")
+          .update({ progreso: nuevoProgreso, completada })
+          .eq("id", ms.id)
+        if (completada) {
+          sound.missionComplete()
+          setEpicEvent({ type: "missionComplete", data: { title: "¡Misión semanal!", subtitle: "+100 XP" } })
+          const { data: fresh } = await supabase.from("users").select("xp_total").eq("id", user.id).single()
+          const nuevoXp = (fresh?.xp_total ?? xp) + 100
+          setXp(nuevoXp)
+          await supabase.from("users").update({ xp_total: nuevoXp }).eq("id", user.id)
+        }
+      }
+    }
   }
 
   const siguiente = async () => {
     setEstado(null)
     setRespuesta("")
     if (indice + 1 >= lecciones.length) {
-      await actualizarMisiones(vidas)
-      // Calcular resultado final y mostrar EpicMoment si corresponde
+      // Calcular pct antes de actualizarMisiones para pasarle nivelCompletado
       const numCorrectas = resultados.filter(r => r.correcta).length
       const pctFinal     = resultados.length > 0
         ? Math.round((numCorrectas / resultados.length) * 100)
         : 0
+      await actualizarMisiones(vidas, pctFinal >= 70)
       // Guardar progresión si aprobó (≥70%)
       if (pctFinal >= 70) {
         await supabase.from("progreso_nivel").upsert([{
@@ -900,6 +952,9 @@ function LeccionInner() {
           ))}
         </div>
       )}
+
+      {/* ── Partículas de rango ── */}
+      {rankUpKey > 0 && <Particles key={rankUpKey} preset="rankUp" />}
 
       {/* ── Epic Moment overlay ── */}
       <EpicMoment event={epicEvent} onDone={() => setEpicEvent(null)} />

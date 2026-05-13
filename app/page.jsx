@@ -13,6 +13,7 @@ import { getRankTheme } from "../lib/rankTheme"
 import { sound } from "../lib/audio"
 import { checkNewAchievements } from "../lib/achievements"
 import Onboarding from "../components/Onboarding"
+import Particles from "../components/Particles"
 
 // ── Pool de misiones disponibles ──
 const MISIONES_POOL = [
@@ -50,6 +51,55 @@ export default function Home() {
   const [misiones, setMisiones] = useState([])
   const [achQueue, setAchQueue]     = useState([])
   const [curAch, setCurAch]         = useState(null)
+  const [bonusBanner, setBonusBanner] = useState(null)  // { msg, xp }
+  const [bonusKey, setBonusKey]       = useState(0)     // key para Particles
+  const [misionSemanal, setMisionSemanal] = useState(null)
+
+  function getLunes() {
+    const hoy = new Date()
+    const dia = hoy.getDay()
+    const diff = dia === 0 ? -6 : 1 - dia
+    const lunes = new Date(hoy)
+    lunes.setDate(hoy.getDate() + diff)
+    return lunes.toISOString().split("T")[0]
+  }
+
+  async function cargarOGenerarMisionSemanal(userId) {
+    const lunes = getLunes()
+    const { data: existente } = await supabase
+      .from("misiones_diarias")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("fecha", lunes)
+      .eq("tipo", "completar_niveles_semana")
+      .maybeSingle()
+
+    if (existente) {
+      setMisionSemanal(existente)
+      return
+    }
+
+    // Calcular domingo de esta semana
+    const domingo = new Date(lunes)
+    domingo.setDate(domingo.getDate() + 6)
+
+    const { data: nueva } = await supabase
+      .from("misiones_diarias")
+      .insert([{
+        user_id:       userId,
+        fecha:         lunes,
+        tipo:          "completar_niveles_semana",
+        tipo_periodo:  "semanal",
+        descripcion:   "Completa 3 niveles esta semana",
+        icono:         "📅",
+        meta:          3,
+        progreso:      0,
+        xp_recompensa: 100,
+      }])
+      .select()
+      .single()
+    setMisionSemanal(nueva ?? null)
+  }
 
   // ── cargarOGenerarMisiones declarada ANTES del useEffect que la llama ──
   async function cargarOGenerarMisiones(userId) {
@@ -134,6 +184,7 @@ export default function Home() {
 
       setPerfil({ ...p, email: user.email })
       await cargarOGenerarMisiones(user.id)
+      await cargarOGenerarMisionSemanal(user.id)
 
       // Sonido de bienvenida — una vez por día
       const hoy = new Date().toISOString().split("T")[0]
@@ -141,6 +192,22 @@ export default function Home() {
       if (!localStorage.getItem(keyLogin)) {
         localStorage.setItem(keyLogin, "1")
         setTimeout(() => sound.dailyLogin(), 600)
+      }
+
+      // Bonus de regreso: +20 XP si lleva ≥ 2 días sin entrar
+      const keyRegreso = `cl_regreso_${hoy}`
+      if (!localStorage.getItem(keyRegreso) && p?.ultima_leccion_fecha) {
+        const ultima = new Date(p.ultima_leccion_fecha)
+        const diasAusente = Math.floor((Date.now() - ultima.getTime()) / 86400000)
+        if (diasAusente >= 2) {
+          localStorage.setItem(keyRegreso, "1")
+          const xpActual = p.xp_total ?? 0
+          await supabase.from("users").update({ xp_total: xpActual + 20 }).eq("id", user.id)
+          p = { ...p, xp_total: xpActual + 20 }
+          setBonusBanner({ msg: `¡Volviste después de ${diasAusente} días!`, xp: 20 })
+          setBonusKey(k => k + 1)
+          setTimeout(() => setBonusBanner(null), 5000)
+        }
       }
 
       // Logros: chequear al cargar perfil
@@ -370,6 +437,45 @@ export default function Home() {
           {/* ══ Columna derecha ══ */}
           <div className="flex flex-col gap-5">
 
+            {/* Misión semanal */}
+            {misionSemanal && (
+              <div
+                className="rounded-2xl p-5"
+                style={{ background: "var(--color-surface)", border: "1.5px solid rgba(192,132,252,0.4)" }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-bold flex items-center gap-2">
+                    <span>📅</span>
+                    <span>Misión semanal</span>
+                  </h2>
+                  <span className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background: "rgba(192,132,252,0.15)", color: "#c084fc" }}>
+                    +{misionSemanal.xp_recompensa} XP
+                  </span>
+                </div>
+                {(() => {
+                  const pct = Math.min(100, Math.round((misionSemanal.progreso / misionSemanal.meta) * 100))
+                  return (
+                    <>
+                      <p className="text-sm font-semibold mb-2" style={{ color: misionSemanal.completada ? "#c084fc" : "white" }}>
+                        {misionSemanal.descripcion}
+                      </p>
+                      <div className="w-full rounded-full h-2 mb-1" style={{ background: "#0d1a20" }}>
+                        <div
+                          className="h-2 rounded-full transition-all duration-500"
+                          style={{
+                            width: `${pct}%`,
+                            background: misionSemanal.completada ? "#c084fc" : "linear-gradient(90deg,#7c3aed,#c084fc)",
+                            boxShadow: misionSemanal.completada ? "0 0 8px rgba(192,132,252,0.6)" : "none",
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-zinc-500">{misionSemanal.progreso}/{misionSemanal.meta} niveles {misionSemanal.completada ? "✅" : "completados esta semana"}</p>
+                    </>
+                  )
+                })()}
+              </div>
+            )}
+
             {/* Misiones del día */}
             {misiones.length > 0 && (
               <div
@@ -487,6 +593,33 @@ export default function Home() {
         </div>
       </div>
       </PageTransition>
+
+      {/* Partículas bonus de regreso */}
+      {bonusKey > 0 && <Particles key={bonusKey} preset="xpGain" />}
+
+      {/* Banner bonus de regreso */}
+      {bonusBanner && (
+        <div
+          className="fixed top-20 left-1/2 z-[80] animate-pop-in"
+          style={{ transform: "translateX(-50%)", pointerEvents: "none" }}
+        >
+          <div
+            className="flex items-center gap-3 px-5 py-3 rounded-2xl font-bold text-sm whitespace-nowrap"
+            style={{
+              background: "rgba(13,46,20,0.97)",
+              border: "1.5px solid var(--color-primary)",
+              boxShadow: "0 4px 24px rgba(88,204,2,0.25)",
+              color: "#fff",
+            }}
+          >
+            <span className="text-xl">🎉</span>
+            <div>
+              <p>{bonusBanner.msg}</p>
+              <p style={{ color: "var(--color-primary)" }}>+{bonusBanner.xp} XP de bienvenida</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Onboarding />
 
