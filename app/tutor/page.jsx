@@ -25,6 +25,7 @@ function TutorInner() {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState("")
   const [pensando, setPensando] = useState(false)
+  const [sessionToken, setSessionToken] = useState(null)
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -32,6 +33,9 @@ function TutorInner() {
     const cargar = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push("/login"); return }
+
+      const { data: { session } } = await supabase.auth.getSession()
+      setSessionToken(session?.access_token ?? null)
 
       if (nivelId) {
         const { data } = await supabase
@@ -62,7 +66,10 @@ function TutorInner() {
     try {
       const res = await fetch("/api/tutor", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(sessionToken ? { "Authorization": `Bearer ${sessionToken}` } : {}),
+        },
         body: JSON.stringify({
           messages: nuevos,
           nivelNombre: nivel?.titulo ?? "",

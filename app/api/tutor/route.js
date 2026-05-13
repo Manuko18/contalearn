@@ -1,14 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk"
+import { createClient } from "@supabase/supabase-js"
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-const TEMAS_PERMITIDOS = [
-  "contabilidad", "tributación", "impuestos", "SRI", "IESS", "RUC",
-  "factura", "balance", "activo", "pasivo", "patrimonio", "debe", "haber",
-  "asiento", "diario", "mayor", "inventario", "depreciación", "amortización",
-  "IVA", "retención", "declaración", "estados financieros", "flujo de caja",
-  "cuentas por cobrar", "cuentas por pagar", "nómina", "rol de pagos",
-]
 
 export async function POST(req) {
   try {
@@ -16,6 +9,34 @@ export async function POST(req) {
 
     if (!messages?.length) {
       return Response.json({ error: "Sin mensajes" }, { status: 400 })
+    }
+
+    // Obtener errores recientes del usuario si viene token de sesión
+    let erroresContext = ""
+    const authHeader = req.headers.get("authorization")
+    const token = authHeader?.replace("Bearer ", "")
+
+    if (token) {
+      const sb = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        { global: { headers: { Authorization: `Bearer ${token}` } } }
+      )
+      const { data: { user } } = await sb.auth.getUser()
+      if (user) {
+        const { data: mistakes } = await sb
+          .from("user_mistakes")
+          .select("pregunta, tu_respuesta, respuesta_correcta")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(5)
+
+        if (mistakes?.length) {
+          erroresContext = `\n\nEl usuario ha cometido estos errores recientes:\n${mistakes
+            .map(m => `- Pregunta: ${m.pregunta} | Su respuesta: ${m.tu_respuesta} | Correcta: ${m.respuesta_correcta}`)
+            .join("\n")}`
+        }
+      }
     }
 
     const systemPrompt = `Eres Conti, tutor experto en contabilidad y tributación ecuatoriana de la app ContaLearn.
@@ -30,9 +51,9 @@ REGLAS ABSOLUTAS:
 
 CONTEXTO DEL NIVEL ACTUAL:
 Tema: ${nivelNombre || "Contabilidad general"}
-Descripción: ${nivelDescripcion || "Principios de contabilidad ecuatoriana"}
+Descripción: ${nivelDescripcion || "Principios de contabilidad ecuatoriana"}${erroresContext}
 
-Ayuda al estudiante a entender este tema de forma práctica.`
+Ayuda al estudiante a entender este tema de forma práctica. Si hay errores recientes, aprovecha para aclarar esos conceptos cuando sea pertinente.`
 
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",

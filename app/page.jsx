@@ -54,6 +54,7 @@ export default function Home() {
   const [bonusBanner, setBonusBanner] = useState(null)  // { msg, xp }
   const [bonusKey, setBonusKey]       = useState(0)     // key para Particles
   const [misionSemanal, setMisionSemanal] = useState(null)
+  const [tieneErrores, setTieneErrores] = useState(false)
 
   function getLunes() {
     const hoy = new Date()
@@ -181,6 +182,14 @@ export default function Home() {
           setTiempoVida(minutosRestantes)
         }
       }
+
+      // Verificar si hay errores pendientes de repasar
+      const { data: erroresCheck } = await supabase
+        .from("user_mistakes")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1)
+      setTieneErrores((erroresCheck?.length ?? 0) > 0)
 
       setPerfil({ ...p, email: user.email })
       await cargarOGenerarMisiones(user.id)
@@ -586,6 +595,15 @@ export default function Home() {
                   onClick={() => router.push("/logros")}
                   color="#c084fc"
                 />
+                {tieneErrores && (
+                  <QuickBtn
+                    icon="🔁"
+                    label="Repasar errores"
+                    sub="Domina lo que fallaste"
+                    onClick={() => router.push("/repasar")}
+                    color="var(--color-danger)"
+                  />
+                )}
               </div>
             </div>
 
