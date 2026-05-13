@@ -244,46 +244,58 @@ export default function NivelesPage() {
             </div>
           )}
 
-          {/* Modo Desafío — visible solo si al menos un nivel tiene dificil completado */}
-          {progresoPorNivel.some(p => p.pasos > 0) && (
-            <div className="mt-2">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-base">⚡</span>
-                <span className="text-sm font-extrabold uppercase tracking-widest" style={{ color: "#ffd700" }}>
-                  Desafío
-                </span>
-                <div className="flex-1 h-px ml-2" style={{ background: "#ffd70033" }} />
-              </div>
-              <button
-                onClick={() => router.push("/desafio")}
-                className="w-full rounded-2xl p-5 text-left transition-all hover:brightness-110 active:scale-[0.99]"
-                style={{
-                  background: "rgba(45,35,10,0.65)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                  border: "1.5px solid #ffd700aa",
-                  boxShadow: "0 4px 0 rgba(255,215,0,0.15), 0 0 32px rgba(255,215,0,0.07)",
-                }}
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
-                    style={{ background: "rgba(255,215,0,0.12)", border: "1px solid rgba(255,215,0,0.3)" }}
-                  >
-                    ⚡
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: "#ffd700" }}>
-                      Desbloqueado
-                    </p>
-                    <h2 className="text-lg font-extrabold text-white">Modo Desafío</h2>
-                    <p className="text-sm text-zinc-400">10 preguntas · 15 s por pregunta · Todos los niveles</p>
-                  </div>
-                  <span className="text-zinc-400 text-2xl">›</span>
+          {/* Modo Desafío — siempre visible, bloqueado hasta completar al menos un fácil */}
+          {(() => {
+            const desbloqueado = progresoPorNivel.some(p => p.pasos > 0)
+            return (
+              <div className="mt-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-base">⚡</span>
+                  <span className="text-sm font-extrabold uppercase tracking-widest" style={{ color: desbloqueado ? "#ffd700" : "#6b7280" }}>
+                    Desafío
+                  </span>
+                  <div className="flex-1 h-px ml-2" style={{ background: desbloqueado ? "#ffd70033" : "#ffffff11" }} />
                 </div>
-              </button>
-            </div>
-          )}
+                <div
+                  onClick={() => desbloqueado && router.push("/desafio")}
+                  className="w-full rounded-2xl p-5 text-left transition-all"
+                  style={{
+                    background: desbloqueado ? "rgba(45,35,10,0.65)" : "rgba(255,255,255,0.03)",
+                    backdropFilter: "blur(12px)",
+                    WebkitBackdropFilter: "blur(12px)",
+                    border: desbloqueado ? "1.5px solid #ffd700aa" : "1.5px solid var(--color-border)",
+                    boxShadow: desbloqueado ? "0 4px 0 rgba(255,215,0,0.15), 0 0 32px rgba(255,215,0,0.07)" : "none",
+                    opacity: desbloqueado ? 1 : 0.5,
+                    cursor: desbloqueado ? "pointer" : "default",
+                  }}
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+                      style={{
+                        background: desbloqueado ? "rgba(255,215,0,0.12)" : "rgba(255,255,255,0.05)",
+                        border: desbloqueado ? "1px solid rgba(255,215,0,0.3)" : "1px solid rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      {desbloqueado ? "⚡" : "🔒"}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: desbloqueado ? "#ffd700" : "#6b7280" }}>
+                        {desbloqueado ? "Desbloqueado" : "Bloqueado"}
+                      </p>
+                      <h2 className="text-lg font-extrabold text-white">Modo Desafío</h2>
+                      <p className="text-sm text-zinc-400">
+                        {desbloqueado
+                          ? "10 preguntas · 15 s por pregunta · Todos los niveles"
+                          : "Completa un nivel en modo Fácil para activarlo"}
+                      </p>
+                    </div>
+                    {desbloqueado && <span className="text-zinc-400 text-2xl">›</span>}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
         </div>
       </PageTransition>
     </div>
