@@ -92,18 +92,22 @@ Escala ESCALA[combo-1] para correcto. rankUp = arpeggio 5 notas + acorde. Master
 
 4 capas: 55 Hz sine · 110 Hz triangle · 880 Hz sine · 221 Hz sine. Fade-in 3–5s. Vol master 0.032.
 
-### Misiones diarias — pool de tipos
+### Misiones diarias — pool de tipos (10 variantes, 3 niveles de dificultad)
 
-| Tipo | Meta |
-|------|------|
-| responder_preguntas | 10 preguntas |
-| correctas_seguidas | 5 seguidas |
-| completar_subniveles | 2 subniveles |
-| sin_perder_vida | 1 sesión limpia |
-| racha_combo | combo 3 |
-| xp_ganar | 50 XP |
+| Tipo | Meta | XP |
+|------|------|----|
+| responder_preguntas_5 | 5 preguntas | 10 |
+| racha_combo_3 | combo 3 | 10 |
+| responder_preguntas | 10 preguntas | 15 |
+| completar_subniveles | 2 subniveles | 15 |
+| sin_perder_vida | 1 sesión limpia | 15 |
+| xp_ganar | 50 XP | 15 |
+| correctas_seguidas | 5 seguidas | 25 |
+| xp_ganar_100 | 100 XP | 25 |
+| completar_subniveles_3 | 3 subniveles | 25 |
+| racha_combo_5 | combo 5 | 25 |
 
-Recompensa: +15 XP por misión. Resetean a medianoche por fecha.
+Resetean a medianoche por fecha. Se generan 3 aleatorias por día.
 
 ### Configuración
 
@@ -292,5 +296,33 @@ SMTP               Gmail smtp.gmail.com:587 App Password
 | Respuesta completar con "X o Y" | Prompt reforzado: máx 2 palabras, sin alternativas |
 | Banco crecía infinito | Límite 20/dificultad; si banco lleno, sirve existentes |
 | Dificultad no persistía entre dispositivos | Migrado de localStorage a tabla `progreso_nivel` en Supabase |
+
+## [2026-05-15] — Sesión 5: modo Test eliminado + vidas en tiempo real + misiones + logros
+
+### Decisiones tomadas
+
+- **Modo 🧪 Test eliminado**: era solo para desarrollo. Botón, state, todas las ramas `if (!modoTest)` y `localStorage.removeItem` al cargar niveles.
+- **Countdown de vidas activo**: antes solo se recargaba al abrir el dashboard. Ahora `setInterval` cada 60s re-evalúa tiempo desde `ultima_vida_recargada` y recarga automáticamente en BD + estado sin recargar la página.
+- **Pool de misiones 6→10 tipos**: se añadieron variantes fáciles (10 XP) y difíciles (25 XP). El XP de recompensa ya no es fijo (15) sino por dificultad.
+- **Logros con datos reales**: las columnas `max_combo`, `perfect_sessions`, `clean_sessions` no existían en BD — siempre valían 0. Se añadió SQL migration. Al terminar sesión, `lecciones/page.jsx` lee, acumula y guarda en BD. `checkNewAchievements` recibe racha real y acumulativos reales.
+- **Página `/logros`**: muestra los 16 logros ordenados por rareza, desbloqueados primero. Datos de localStorage (`cl_achievements_v2`).
+
+### Funcionalidades completadas
+
+- `app/niveles/page.jsx` y `app/lecciones/page.jsx` — modo Test eliminado
+- Countdown vidas en tiempo real (`app/page.jsx`)
+- Pool misiones ampliado (`app/page.jsx`)
+- Logros acumulativos en BD (`app/lecciones/page.jsx`)
+- `app/logros/page.jsx` — página nueva
+- `sql/add_achievement_columns.sql` — migration (ya corrida)
+
+### Problemas resueltos
+
+| Problema | Fix |
+|----------|-----|
+| Vidas no se recargaban en tiempo real | `setInterval` 60s re-evalúa y actualiza BD + estado |
+| Logros siempre valían 0 (columnas inexistentes) | SQL añade columnas; lecciones las actualiza al terminar sesión |
+| Pool de misiones repetitivo (solo 6 tipos iguales) | 10 tipos con 3 niveles de XP (10/15/25) |
+| `racha: 0` conservador en checkNewAchievements | Ahora lee `racha_actual` real desde BD al terminar sesión |
 
 <!-- Agregar nuevas sesiones aquí arriba de esta línea, con formato [YYYY-MM-DD] -->
