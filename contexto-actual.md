@@ -36,7 +36,7 @@
 
 ## Pendientes inmediatos
 
-⚠️ **Correr en Supabase SQL Editor:** [`sql/add_tipo_periodo.sql`](sql/add_tipo_periodo.sql) — agrega columna `tipo_periodo` a `misiones_diarias`. Sin esto, la misión semanal falla al insertar.
+_(ninguno urgente)_
 
 ---
 
@@ -44,7 +44,6 @@
 
 | Problema | Impacto | Notas |
 |----------|---------|-------|
-| Migration `tipo_periodo` no corrida | Alto | Bloquea creación de misión semanal |
 | Imágenes en preguntas (`imagen_url`) | Bajo | Columna existe en BD, sin URLs reales |
 | Tabla `lecciones` sin uso | Info | Existe en BD pero el juego ya usa solo IA |
 
@@ -90,7 +89,7 @@ components/
 
 sql/
   add_achievement_columns.sql  ← ya corrida en Supabase
-  add_tipo_periodo.sql         ← PENDIENTE CORRER
+  add_tipo_periodo.sql         ← ya corrida en Supabase
 ```
 
 **BD tabla `users`:** xp_total, racha_actual, vidas, ultima_vida_recargada, ultima_leccion_fecha, empresa_mes, titulo_empresa, max_combo, perfect_sessions, clean_sessions
