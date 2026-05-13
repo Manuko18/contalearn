@@ -1,5 +1,5 @@
 # ContaLearn — Contexto actual
-> Última actualización: 2026-05-12 (sesión 8)
+> Última actualización: 2026-05-12 (sesión 9)
 
 ---
 
@@ -25,6 +25,13 @@
 - Reportes: ⚠️ → Sonnet pre-filtra → panel `/admin` ✅
 - Logros (`/logros`): 16 logros con datos acumulativos reales en BD ✅
 - Logging de tokens Haiku en `api/generar-leccion` (visible en Vercel logs) ✅
+- **Modo Desafío** (`/desafio`) ✅
+  - 10 preguntas mc/vf mezcladas de todos los niveles (2 por nivel, shuffle global)
+  - Countdown 15 s por pregunta, barra color-coded (verde→amarillo→rojo)
+  - Tiempo agotado = error + avance automático; sin vidas ni anti-farmeo
+  - +10 XP por correcta, guardado en BD al terminar
+  - Récord personal en `localStorage cl_desafio_best`; nuevo récord → partículas `rankUp` + `sound.rankUp()`
+  - Tarjeta "⚡ Modo Desafío" en `/niveles` con borde dorado, visible solo si el usuario tiene ≥1 nivel con dificultad `dificil` completada
 - **Ciclo de errores** ✅
   - Tutor IA recibe últimos 5 `user_mistakes` del usuario en el system prompt (via Bearer token → Supabase autenticado)
   - `/repasar`: modo estudio puro, carga errores por nivel, genera opciones MC (correcta + tu_respuesta + distractores del banco), elimina el registro al responder bien. Sin XP ni vidas.
@@ -35,6 +42,8 @@
 ---
 
 ## En qué punto quedamos
+
+**Sesión 9 (2026-05-12):** Modo Desafío completo — `/desafio` con timer 15 s, 10 preguntas multi-nivel, récord en localStorage. Tarjeta dorada en `/niveles` solo cuando hay dificil completado.
 
 **Sesión 8 (2026-05-12):** Ciclo de errores completo — `/repasar` (modo estudio, elimina errores dominados), tutor con contexto `user_mistakes` en system prompt, botón condicional en dashboard. Fix: localStorage `cl_mastered_mistakes` como fallback porque RLS no tenía política DELETE en `user_mistakes` → SQL en `sql/add_rls_delete_user_mistakes.sql` pendiente de correr en Supabase.
 
