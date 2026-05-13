@@ -66,7 +66,7 @@ CREATE INDEX idx_misiones_user_fecha ON misiones_diarias(user_id, fecha);
 | 💼 Contador Sr. | 6 |
 | 👔 CFO | 10 |
 
-### Logros — 16 en total (12 base + 4 empresa)
+### Logros — 19 en total (15 base + 4 empresa)
 
 Rareza: common · uncommon · rare · epic · legendary
 Storage: localStorage key `cl_achievements_v2`
