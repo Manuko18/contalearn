@@ -35,12 +35,15 @@ const MISIONES_POOL = [
 function mezclarPool(arr) { return [...arr].sort(() => Math.random() - 0.5) }
 
 const RANGOS = [
-  { nombre: "Bronce",   emoji: "🥉", color: "#cd7f32", min: 0   },
-  { nombre: "Plata",    emoji: "🥈", color: "#a8a8a8", min: 60  },
-  { nombre: "Oro",      emoji: "🥇", color: "#ffd700", min: 120 },
-  { nombre: "Platino",  emoji: "💎", color: "#00d4aa", min: 180 },
-  { nombre: "Diamante", emoji: "💠", color: "#60a5fa", min: 240 },
-  { nombre: "Maestro",  emoji: "👑", color: "#c084fc", min: 300 },
+  { nombre: "Bronce",      emoji: "🥉", color: "#cd7f32", min: 0    },
+  { nombre: "Plata",       emoji: "🥈", color: "#a8a8a8", min: 60   },
+  { nombre: "Oro",         emoji: "🥇", color: "#ffd700", min: 120  },
+  { nombre: "Platino",     emoji: "💎", color: "#00d4aa", min: 180  },
+  { nombre: "Diamante",    emoji: "💠", color: "#60a5fa", min: 240  },
+  { nombre: "Maestro",     emoji: "👑", color: "#c084fc", min: 300  },
+  { nombre: "Gran Maestro",emoji: "🔮", color: "#e879f9", min: 500  },
+  { nombre: "Leyenda",     emoji: "⚡", color: "#fbbf24", min: 800  },
+  { nombre: "Élite",       emoji: "🌟", color: "#f472b6", min: 1200 },
 ]
 
 export default function Home() {
@@ -55,6 +58,7 @@ export default function Home() {
   const [bonusKey, setBonusKey]       = useState(0)     // key para Particles
   const [misionSemanal, setMisionSemanal] = useState(null)
   const [tieneErrores, setTieneErrores] = useState(false)
+  const [nivelesRuta, setNivelesRuta] = useState([])
 
   function getLunes() {
     const hoy = new Date()
@@ -182,6 +186,13 @@ export default function Home() {
           setTiempoVida(minutosRestantes)
         }
       }
+
+      // Cargar niveles para la ruta de aprendizaje
+      const { data: nivelesData } = await supabase
+        .from("niveles")
+        .select("id, titulo, descripcion, emoji, orden")
+        .order("orden", { ascending: true })
+      setNivelesRuta(nivelesData || [])
 
       // Verificar si hay errores pendientes de repasar
       const { data: erroresCheck } = await supabase
@@ -393,7 +404,6 @@ export default function Home() {
                 xp={xp}
               />
               <div className="flex-1 flex flex-col gap-3">
-                <p className="text-sm text-zinc-300 leading-relaxed">{fraseBuho}</p>
                 <button
                   onClick={() => router.push("/niveles")}
                   className="w-full rounded-xl py-3 font-extrabold text-sm text-white transition-all active:scale-95 hover:brightness-110"
@@ -416,30 +426,29 @@ export default function Home() {
                 Ruta de aprendizaje
               </h2>
               <div className="flex flex-col gap-3">
-                {[
-                  { emoji: "📖", title: "Fundamentos",      desc: "Activos, pasivos y patrimonio" },
-                  { emoji: "⚖️", title: "Ecuación contable", desc: "A = P + Patrimonio" },
-                  { emoji: "📝", title: "Asientos",          desc: "Partida doble y débitos" },
-                  { emoji: "📊", title: "Estados financieros", desc: "Balance y P&G" },
-                  { emoji: "🌍", title: "NIIF & Avanzado",   desc: "Normas internacionales" },
-                ].map(({ emoji, title, desc }, i) => (
-                  <div key={title} className="flex items-center gap-3 group">
+                {nivelesRuta.map((nivel, i) => (
+                  <div key={nivel.id} className="flex items-center gap-3">
                     <div
                       className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
                       style={{ background: "rgba(88,204,2,0.08)", border: "1px solid rgba(88,204,2,0.15)" }}
                     >
-                      {emoji}
+                      {nivel.emoji || "📖"}
                     </div>
-                    <div>
-                      <p className="font-semibold text-sm">{title}</p>
-                      <p className="text-xs text-zinc-500">{desc}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{nivel.titulo}</p>
+                      <p className="text-xs text-zinc-500 truncate">{nivel.descripcion}</p>
                     </div>
-                    <div className="ml-auto">
-                      <span className="text-xs text-zinc-600 font-mono">Nivel {i + 1}</span>
-                    </div>
+                    <span className="text-xs text-zinc-600 font-mono flex-shrink-0">Nivel {i + 1}</span>
                   </div>
                 ))}
               </div>
+              <button
+                onClick={() => router.push("/niveles")}
+                className="mt-3 w-full text-xs font-bold py-2 rounded-xl transition-all hover:brightness-110"
+                style={{ background: "rgba(88,204,2,0.08)", color: "var(--color-primary)", border: "1px solid rgba(88,204,2,0.15)" }}
+              >
+                Ver los {nivelesRuta.length} niveles →
+              </button>
             </div>
           </div>
 
