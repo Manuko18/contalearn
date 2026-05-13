@@ -6,6 +6,16 @@ import { supabase } from "../../lib/supabaseClient"
 import Navbar from "../../components/Navbar"
 import LoadingConti from "../../components/LoadingConti"
 
+function getMastered() {
+  try { return new Set(JSON.parse(localStorage.getItem("cl_mastered_mistakes") || "[]")) }
+  catch { return new Set() }
+}
+function addMastered(id) {
+  const set = getMastered()
+  set.add(String(id))
+  localStorage.setItem("cl_mastered_mistakes", JSON.stringify([...set]))
+}
+
 export default function RepasarPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -24,7 +34,11 @@ export default function RepasarPage() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
-      if (!mistakes?.length) {
+      // Filtrar los que ya dominó (localStorage como fallback si RLS bloquea el DELETE)
+      const mastered = getMastered()
+      const pendientes = (mistakes || []).filter(m => !mastered.has(String(m.id)))
+
+      if (!pendientes.length) {
         setErrores([])
         setLoading(false)
         return
@@ -52,7 +66,7 @@ export default function RepasarPage() {
       )
 
       // Calcular opciones una sola vez para evitar re-shuffle en cada render
-      const erroresConOpciones = mistakes.map(m => {
+      const erroresConOpciones = pendientes.map(m => {
         const correcta = m.respuesta_correcta
         const wrong1 = m.tu_respuesta && m.tu_respuesta !== correcta ? m.tu_respuesta : null
         const pool = (distPool[m.nivel_id] || [])
@@ -79,8 +93,11 @@ export default function RepasarPage() {
     setRespondido(prev => ({ ...prev, [mistake.id]: { opcion: opcionSeleccionada, correcto } }))
 
     if (correcto) {
+      // Marcar como dominado en localStorage inmediatamente (fallback si RLS bloquea DELETE)
+      addMastered(mistake.id)
       setTimeout(async () => {
-        await supabase.from("user_mistakes").delete().eq("id", mistake.id)
+        const { error } = await supabase.from("user_mistakes").delete().eq("id", mistake.id)
+        if (error) console.warn("No se pudo eliminar de BD (RLS):", error.message)
         setErrores(prev => prev.filter(e => e.id !== mistake.id))
         setRespondido(prev => {
           const next = { ...prev }
