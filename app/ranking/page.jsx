@@ -6,18 +6,11 @@ import { supabase } from "../../lib/supabaseClient"
 import Navbar from "../../components/Navbar"
 import LoadingConti from "../../components/LoadingConti"
 import PageTransition from "../../components/PageTransition"
-
-const RANGOS = [
-  { nombre: "Bronce",   emoji: "🥉", color: "#cd7f32", min: 0   },
-  { nombre: "Plata",    emoji: "🥈", color: "#a8a8a8", min: 60  },
-  { nombre: "Oro",      emoji: "🥇", color: "#ffd700", min: 120 },
-  { nombre: "Platino",  emoji: "💎", color: "#00d4aa", min: 180 },
-  { nombre: "Diamante", emoji: "💠", color: "#60a5fa", min: 240 },
-  { nombre: "Maestro",  emoji: "👑", color: "#c084fc", min: 300 },
-]
+import { getRankTheme } from "../../lib/rankTheme"
 
 function getRango(xp) {
-  return [...RANGOS].reverse().find(r => xp >= r.min) || RANGOS[0]
+  const t = getRankTheme(xp)
+  return { nombre: t.name, emoji: t.emoji, color: t.color }
 }
 
 const PODIUM_COLORS = [
