@@ -458,4 +458,42 @@ SMTP               Gmail smtp.gmail.com:587 App Password
 | Ruta de aprendizaje mostraba 5 niveles hardcodeados | Fetch dinámico de tabla `niveles` |
 | Frase búho aparecía dos veces | Eliminado `<p>{fraseBuho}</p>` debajo de Mascota |
 
+## [2026-05-13] — Sesión 11: rediseño visual completo
+
+### Decisiones tomadas
+
+- **Rediseño solo en capa visual**: se aplica el handoff de diseño (Babel inline → Next.js) sin tocar ninguna lógica de negocio, queries Supabase, manejo de XP/vidas/misiones ni llamadas a Claude API.
+- **Design system dark navy en `globals.css`**: tokens CSS (`--bg-0: #060b18`, `--surface: #14213d`, `--accent-green/cyan/gold`), font Manrope via `next/font/google`. No se usó CSS Modules ni archivos separados — todo en globals.css para mantener la convención del proyecto.
+- **Clases CSS por pantalla**: `.qs` (base screen), `.bnav` (mobile nav), `.dash-*` (dashboard), `.niv-*` (niveles), `.res-*` (resultados), `.rk-*` (ranking), `.logros-*/.logro-*` (logros), `.emp-*` (empresa). Patrón coherente con el handoff.
+- **`color-mix(in oklab)`** en logro-cards para tints dinámicos por rareza sin JS.
+- **Desktop responsivo**: `@media (min-width: 768px)` limita `.scr-scroll` a `max-width: 520px` y centra con flexbox en `.qs`. Mobile bottom nav (`.bnav`) se oculta en desktop; Tailwind desktop top bar queda visible.
+- **`overflow-x: hidden`** en `body` + `.qs`: soluciona scroll lateral en móvil causado por elementos que se salen del viewport.
+- **`PageTransition` eliminado** de lecciones, empresa, desafío: componente no existía en el proyecto destino — se removió sin reemplazar.
+- **`ResExplainCard`** añadido como helper en lecciones: traduce el componente `ExplainCard` del handoff al contexto de la pantalla de resultados.
+- **7 lint warnings pre-existentes confirmados**: via `git stash` se verificó que todos existían antes de la sesión. No se introdujeron nuevos.
+- **Turbopack falla en worktree local** (no en Vercel): la `}` en la ruta del worktree confunde la inferencia de workspace root de Turbopack → encuentra `package.json` de `cotalerar}` en lugar del del proyecto. No afecta Vercel.
+
+### Funcionalidades completadas
+
+- `app/globals.css` — design system completo: tokens, `.qs`, `.bnav`, `.scr-scroll`, `.scr-header`, `.dash-*`, `.niv-*`, `.res-*`, `.rk-*`, `.logros-*`, `.emp-*`, desktop media query, overflow fix
+- `app/layout.jsx` — Manrope font importada con `next/font/google`, variable `--font-manrope`
+- `components/Mascota.jsx` — Conti Core reescrito en SVG con anillos, pulso, burbuja de frase
+- `components/Navbar.jsx` — bottom nav 5 ítems (Inicio/Niveles/Empresa/Ranking/Logros), badge rojo misiones
+- `app/page.jsx` — Dashboard rediseñado con `.dash-*`
+- `app/niveles/page.jsx` — rediseñado con `.niv-*`, tarjeta Modo Desafío, badges Fácil/Normal/Difícil
+- `app/lecciones/page.jsx` — fase RESULTADOS completamente reemplazada con `.res-*`; `ResExplainCard`; `errorJuego` en `.qs`
+- `app/empresa/page.jsx` — rediseñado con `.emp-*`
+- `app/ranking/page.jsx` — rediseñado con `.rk-*`, podio, lista 4–10, fila "tu posición"
+- `app/logros/page.jsx` — rediseñado con `.logros-*`, hero con barra de progreso, leyenda por rareza
+- `app/desafio/page.jsx` — rediseñado con `.qs` + `.res-*` para resultados
+- `app/repasar/page.jsx` — rediseñado con `.qs` + `.scr-header`
+
+### Problemas resueltos
+
+| Problema | Fix |
+|----------|-----|
+| Layout estirado en desktop | `max-width: 520px` + `align-items: center` en media query ≥768px |
+| Scroll lateral en móvil | `overflow-x: hidden` en `body` + `.qs` |
+| Edit tool "String not found" en lecciones | Write completo del archivo en lugar de edición parcial |
+
 <!-- Agregar nuevas sesiones aquí arriba de esta línea, con formato [YYYY-MM-DD] -->
