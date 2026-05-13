@@ -137,6 +137,7 @@ function LeccionInner() {
   const timerRef = useRef(null)
   const audioRef = useRef(null)
   const vozActivaRef = useRef(false)
+  const dificultadSesionRef = useRef("facil")
   const vozIdRef = useRef(0)
 
 
@@ -355,6 +356,7 @@ function LeccionInner() {
   }
 
   const cargarPreguntasIA = async () => {
+    dificultadSesionRef.current = dificultad   // captura dificultad antes de que cambie
     setCargandoJuego(true)
     const TOTAL = 10
     const storageKey = `vistas_nivel_${nivelId}`
@@ -934,20 +936,20 @@ function LeccionInner() {
             })()}
           </div>
 
-          {/* Mensaje de progresión */}
-          {pct >= 70 && dificultad === "facil" && (
+          {/* Mensaje de progresión — usa dificultadSesionRef para no leer el estado ya actualizado */}
+          {pct >= 70 && dificultadSesionRef.current === "facil" && (
             <div className="rounded-2xl p-4 mb-4 text-center" style={{ background: "#0d2e14", border: "1px solid var(--color-primary)" }}>
               <p className="text-lg font-extrabold" style={{ color: "var(--color-primary)" }}>🎉 ¡Superaste el nivel Fácil!</p>
               <p className="text-sm text-zinc-400 mt-1">La próxima sesión será en dificultad 🟡 Normal</p>
             </div>
           )}
-          {pct >= 70 && dificultad === "normal" && (
+          {pct >= 70 && dificultadSesionRef.current === "normal" && (
             <div className="rounded-2xl p-4 mb-4 text-center" style={{ background: "#1a1a0d", border: "1px solid #fbbf24" }}>
               <p className="text-lg font-extrabold" style={{ color: "#fbbf24" }}>🔥 ¡Superaste el nivel Normal!</p>
               <p className="text-sm text-zinc-400 mt-1">La próxima sesión será en dificultad 🔴 Difícil</p>
             </div>
           )}
-          {pct >= 70 && dificultad === "dificil" && (
+          {pct >= 70 && dificultadSesionRef.current === "dificil" && (
             <div className="rounded-2xl p-4 mb-4 text-center" style={{ background: "#2e0a0a", border: "1px solid #f87171" }}>
               <p className="text-lg font-extrabold" style={{ color: "#f87171" }}>🏆 ¡Nivel completado!</p>
               <p className="text-sm text-zinc-400 mt-1">El siguiente nivel está desbloqueado</p>
@@ -1196,7 +1198,7 @@ function LeccionInner() {
         </div>
 
         {/* ── OPCIONES ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 200 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 240 }}>
 
           {/* Multiple choice */}
           {leccion.tipo_ejercicio === "multiple_choice" && opcionesMezcladas.map((op, i) => {
@@ -1268,18 +1270,18 @@ function LeccionInner() {
         backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
         borderTop: feedbackState === "correct" ? "1px solid rgba(34,197,94,0.35)" : feedbackState === "incorrect" ? "1px solid rgba(239,68,68,0.35)" : "1px solid rgba(255,255,255,0.07)",
         boxShadow: feedbackState === "correct" ? "0 -8px 32px rgba(34,197,94,0.14)" : feedbackState === "incorrect" ? "0 -8px 32px rgba(239,68,68,0.14)" : "none",
-        padding: "14px 20px 24px",
+        padding: "16px 20px 28px",
       }}>
-        <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 14 }}>
 
           {/* Fila mascota + burbuja */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Mascota estado={mascotaEstado} size={76} />
-            <div style={{ position: "relative", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.13)", padding: "10px 14px", borderRadius: "14px 14px 14px 4px", fontSize: 12.5, lineHeight: 1.4, color: "#a4b1c6", maxWidth: 260, backdropFilter: "blur(8px)" }}>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 14 }}>
+            <Mascota estado={mascotaEstado} size={100} />
+            <div style={{ flex: 1, position: "relative", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.14)", padding: "13px 16px", borderRadius: "16px 16px 16px 4px", fontSize: 14, lineHeight: 1.45, color: "#a4b1c6", backdropFilter: "blur(8px)" }}>
               <b style={{ color: "#f1f5fb" }}>{bubbleMsg.bold}</b>
               <span>{bubbleMsg.rest}</span>
               {feedbackState === "incorrect" && c.explicacion_error && (
-                <p style={{ marginTop: 6, fontSize: 11.5, color: "#94a3b8", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 6 }}>
+                <p style={{ marginTop: 8, fontSize: 12.5, color: "#94a3b8", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 8 }}>
                   💡 {c.explicacion_error}
                 </p>
               )}
@@ -1290,8 +1292,8 @@ function LeccionInner() {
           {feedbackState === "idle" ? (
             <button onClick={verificar} disabled={!respuesta}
               style={{
-                width: "100%", padding: "14px", borderRadius: 14,
-                fontFamily: "inherit", fontSize: 15, fontWeight: 800,
+                width: "100%", padding: "16px", borderRadius: 16,
+                fontFamily: "inherit", fontSize: 16, fontWeight: 800,
                 background: respuesta ? "#22c55e" : "rgba(255,255,255,0.05)",
                 color: respuesta ? "#042713" : "#6b7a93",
                 border: `1.5px solid ${respuesta ? "#22c55e" : "rgba(255,255,255,0.09)"}`,
@@ -1304,8 +1306,8 @@ function LeccionInner() {
           ) : (
             <button onClick={siguiente}
               style={{
-                width: "100%", padding: "14px", borderRadius: 14,
-                fontFamily: "inherit", fontSize: 15, fontWeight: 800,
+                width: "100%", padding: "16px", borderRadius: 16,
+                fontFamily: "inherit", fontSize: 16, fontWeight: 800,
                 background: feedbackState === "correct" ? "#22c55e" : "#ef4444",
                 color: feedbackState === "correct" ? "#042713" : "#fff",
                 border: "none", cursor: "pointer",
