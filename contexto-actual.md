@@ -1,5 +1,5 @@
 # ContaLearn — Contexto actual
-> Última actualización: 2026-05-12 (sesión 7)
+> Última actualización: 2026-05-12 (sesión 8)
 
 ---
 
@@ -25,10 +25,18 @@
 - Reportes: ⚠️ → Sonnet pre-filtra → panel `/admin` ✅
 - Logros (`/logros`): 16 logros con datos acumulativos reales en BD ✅
 - Logging de tokens Haiku en `api/generar-leccion` (visible en Vercel logs) ✅
+- **Ciclo de errores** ✅
+  - Tutor IA recibe últimos 5 `user_mistakes` del usuario en el system prompt (via Bearer token → Supabase autenticado)
+  - `/repasar`: modo estudio puro, carga errores por nivel, genera opciones MC (correcta + tu_respuesta + distractores del banco), elimina el registro al responder bien. Sin XP ni vidas.
+  - Dashboard muestra botón "🔁 Repasar errores" solo si hay registros en `user_mistakes`
+  - localStorage `cl_mastered_mistakes` como fallback si RLS bloquea DELETE
+  - **⚠️ SQL pendiente de correr en Supabase:** `sql/add_rls_delete_user_mistakes.sql` — política DELETE para `user_mistakes`
 
 ---
 
 ## En qué punto quedamos
+
+**Sesión 8 (2026-05-12):** Ciclo de errores completo — `/repasar` (modo estudio, elimina errores dominados), tutor con contexto `user_mistakes` en system prompt, botón condicional en dashboard. Fix: localStorage `cl_mastered_mistakes` como fallback porque RLS no tenía política DELETE en `user_mistakes` → SQL en `sql/add_rls_delete_user_mistakes.sql` pendiente de correr en Supabase.
 
 **Sesión 7 (2026-05-12):** RankUp visual (EpicMoment + partículas + sound), bonus regreso +20 XP, misión semanal con EpicMoment al completar. Fix build: `badge` no destructurado en desktop navbar → `ReferenceError` en prerender de `/admin`.
 
@@ -36,7 +44,8 @@
 
 ## Pendientes inmediatos
 
-_(ninguno urgente)_
+- **Correr en Supabase SQL Editor:** `sql/add_rls_delete_user_mistakes.sql`
+  Activa política DELETE en `user_mistakes` para que el borrado funcione en cualquier dispositivo (ahora solo funciona por localStorage)
 
 ---
 
@@ -88,8 +97,9 @@ components/
   Navbar.jsx                Badge rojo misiones en ícono Inicio
 
 sql/
-  add_achievement_columns.sql  ← ya corrida en Supabase
-  add_tipo_periodo.sql         ← ya corrida en Supabase
+  add_achievement_columns.sql        ← ya corrida en Supabase
+  add_tipo_periodo.sql               ← ya corrida en Supabase
+  add_rls_delete_user_mistakes.sql   ← PENDIENTE correr en Supabase
 ```
 
 **BD tabla `users`:** xp_total, racha_actual, vidas, ultima_vida_recargada, ultima_leccion_fecha, empresa_mes, titulo_empresa, max_combo, perfect_sessions, clean_sessions
