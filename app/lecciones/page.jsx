@@ -36,7 +36,6 @@ function LeccionInner() {
   const searchParams = useSearchParams()
   const nivelId = searchParams.get("nivel")
   const dificultadParam = 0
-  const modoTest = typeof window !== "undefined" && localStorage.getItem("modoTest") === "1"
 
   const [user, setUser] = useState(null)
   const [nivel, setNivel] = useState(null)
@@ -101,12 +100,12 @@ function LeccionInner() {
 
       if (!perfil) {
         await supabase.from("users").insert([{ id: user.id, email: user.email, xp_total: 0, racha_actual: 0, vidas: 5, ultima_vida_recargada: new Date().toISOString() }])
-        setXp(0); setVidas(modoTest ? 99 : 5)
-        vidasInicialesRef.current = modoTest ? 99 : 5
+        setXp(0); setVidas(5)
+        vidasInicialesRef.current = 5
       } else {
         setXp(perfil.xp_total ?? 0)
-        setVidas(modoTest ? 99 : (perfil.vidas ?? 5))
-        vidasInicialesRef.current = modoTest ? 99 : (perfil.vidas ?? 5)
+        setVidas(perfil.vidas ?? 5)
+        vidasInicialesRef.current = perfil.vidas ?? 5
       }
 
       setNivel(nivelData)
@@ -276,9 +275,9 @@ function LeccionInner() {
     emitContiEvent("error")
     setAnimacion("incorrecto")
     setTimeout(() => setAnimacion(""), 500)
-    const nuevasVidas = modoTest ? vidas : Math.max(vidas - 1, 0)
+    const nuevasVidas = Math.max(vidas - 1, 0)
     setVidas(nuevasVidas)
-    if (!modoTest) await supabase.from("users").update({ vidas: nuevasVidas }).eq("id", user.id)
+    await supabase.from("users").update({ vidas: nuevasVidas }).eq("id", user.id)
     setResultados(prev => [...prev, {
       pregunta: leccion.contenido_json.pregunta,
       correcta: false,
@@ -392,28 +391,24 @@ function LeccionInner() {
       xpSesionRef.current += 10
       setShowFloatXP(true)
       setTimeout(() => setShowFloatXP(false), 950)
-      if (!modoTest) {
-        await supabase.from("users").update({ xp_total: nuevoXp }).eq("id", user.id)
-      }
+      await supabase.from("users").update({ xp_total: nuevoXp }).eq("id", user.id)
     } else {
       sound.incorrect()
       emitContiEvent("error")
       setCombo(0)
       setFallosSegidos(f => f + 1)
       preguntasRespRef.current += 1
-      const nuevasVidas = modoTest ? vidas : Math.max(vidas - 1, 0)
+      const nuevasVidas = Math.max(vidas - 1, 0)
       setVidas(nuevasVidas)
-      if (!modoTest) {
-        await supabase.from("users").update({ vidas: nuevasVidas, ultima_vida_recargada: new Date().toISOString() }).eq("id", user.id)
-        await supabase.from("user_mistakes").insert([{
-          user_id: user.id,
-          nivel_id: nivelId,
-          leccion_id: leccion.bancoId ?? null,
-          pregunta: c.pregunta || c.enunciado || "",
-          tu_respuesta: mostrarRespuesta(respuesta),
-          respuesta_correcta: mostrarRespuesta(c.respuesta_correcta),
-        }])
-      }
+      await supabase.from("users").update({ vidas: nuevasVidas, ultima_vida_recargada: new Date().toISOString() }).eq("id", user.id)
+      await supabase.from("user_mistakes").insert([{
+        user_id: user.id,
+        nivel_id: nivelId,
+        leccion_id: leccion.bancoId ?? null,
+        pregunta: c.pregunta || c.enunciado || "",
+        tu_respuesta: mostrarRespuesta(respuesta),
+        respuesta_correcta: mostrarRespuesta(c.respuesta_correcta),
+      }])
     }
 
     setResultados(prev => [...prev, {
@@ -482,7 +477,7 @@ function LeccionInner() {
         .from("users").select("xp_total").eq("id", user.id).single()
       const nuevoXp = (fresh?.xp_total ?? xp) + totalBonus
       setXp(nuevoXp)
-      if (!modoTest) await supabase.from("users").update({ xp_total: nuevoXp }).eq("id", user.id)
+      await supabase.from("users").update({ xp_total: nuevoXp }).eq("id", user.id)
     }
   }
 
@@ -497,7 +492,7 @@ function LeccionInner() {
         ? Math.round((numCorrectas / resultados.length) * 100)
         : 0
       // Guardar progresión si aprobó (≥70%)
-      if (pctFinal >= 70 && !modoTest) {
+      if (pctFinal >= 70) {
         await supabase.from("progreso_nivel").upsert([{
           user_id: user.id, nivel_id: nivelId, dificultad,
         }], { onConflict: "user_id,nivel_id,dificultad" })

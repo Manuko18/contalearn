@@ -30,12 +30,9 @@ export default function NivelesPage() {
   const [niveles, setNiveles] = useState([])
   const [progresoPorNivel, setProgresoPorNivel] = useState([])
   const [loading, setLoading] = useState(true)
-  const [modoTest, setModoTest] = useState(() =>
-    typeof window !== "undefined" && localStorage.getItem("modoTest") === "1"
-  )
-
   useEffect(() => {
     const cargar = async () => {
+      localStorage.removeItem("modoTest")
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push("/login"); return }
 
@@ -88,25 +85,8 @@ export default function NivelesPage() {
                   {progresoPorNivel.filter(p => p.completo).length}/{niveles.length} completos
                 </span>
               </h1>
-              <button
-                onClick={() => {
-                  const nuevo = !modoTest
-                  setModoTest(nuevo)
-                  localStorage.setItem("modoTest", nuevo ? "1" : "0")
-                }}
-                className="text-xs px-3 py-1.5 rounded-xl font-bold transition-all"
-                style={{
-                  background: modoTest ? "#f59e0b22" : "var(--color-surface)",
-                  border: `1.5px solid ${modoTest ? "#f59e0b" : "var(--color-border)"}`,
-                  color: modoTest ? "#f59e0b" : "#6b7280",
-                }}
-              >
-                🧪 {modoTest ? "Test ON" : "Test"}
-              </button>
             </div>
-            <p className="text-zinc-400 text-sm">
-              {modoTest ? "🧪 Modo prueba activo — todos los niveles desbloqueados" : "Completa cada nivel para desbloquear el siguiente"}
-            </p>
+            <p className="text-zinc-400 text-sm">Completa cada nivel para desbloquear el siguiente</p>
           </div>
 
           {/* Mapa de niveles agrupado por categoría */}
@@ -132,7 +112,7 @@ export default function NivelesPage() {
                   {/* Niveles de esta categoría */}
                   <div className="flex flex-col gap-3">
                     {catNiveles.map(({ nivel, progreso, index }) => {
-                      const desbloqueado = modoTest || index === 0 || progresoPorNivel[index - 1]?.completo
+                      const desbloqueado = index === 0 || progresoPorNivel[index - 1]?.completo
                       const color = COLORES[index % COLORES.length]
                       const pct = Math.round(((progreso?.pasos ?? 0) / 3) * 100)
 

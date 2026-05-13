@@ -1,5 +1,5 @@
 # ContaLearn — Contexto actual
-> Última actualización: 2026-05-14 (sesión 4)
+> Última actualización: 2026-05-15 (sesión 5)
 
 ---
 
@@ -22,22 +22,18 @@
 - **Práctica extra** (`/practica?nivel=ID`): Haiku sin XP, banco reutilizable ✅
 - **Empresa simulada** (`/empresa`): dificultad adaptativa, banco `empresa_preguntas` ✅
 - **Sistema reportes**: ⚠️ → Sonnet pre-filtra → panel `/admin` ✅
-- Modo 🧪 Test activo en producción (pendiente quitar)
 
 ---
 
 ## En qué punto quedamos
 
-Sesión 2026-05-14: lecciones completamente migradas a IA con banco, progresión fácil→normal→difícil para desbloquear niveles, tipos variados de preguntas.
+Sesión 2026-05-15: eliminado modo 🧪 Test de producción (botón, state, todas las ramas condicionales y limpieza del localStorage).
 
 ---
 
 ## Pendientes inmediatos
 
-### 1. Quitar modo 🧪 Test
-- `app/niveles/page.jsx`: eliminar botón y state `modoTest`
-- `app/lecciones/page.jsx`: eliminar todos los `if (!modoTest)` y ramas test
-- `localStorage.removeItem("modoTest")`
+_(ninguno urgente)_
 
 ---
 
@@ -45,7 +41,6 @@ Sesión 2026-05-14: lecciones completamente migradas a IA con banco, progresión
 
 | Problema | Impacto | Notas |
 |----------|---------|-------|
-| Modo 🧪 Test activo en producción | Medio | Quitar cuando terminen pruebas |
 | Logros sin columnas BD (`max_combo`, etc.) | Bajo | Funciona con `?? 0` |
 | Imágenes en preguntas (`imagen_url`) | Bajo | Columna existe, sin URLs |
 | Tabla `lecciones` ya no se usa en el juego | Bajo | Existe en BD pero lecciones usa solo IA |
