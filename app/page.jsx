@@ -230,6 +230,28 @@ export default function Home() {
         }
       }
 
+      // Migración única: desbloquear logros nuevos para usuarios que ya tenían el XP
+      if (!localStorage.getItem("cl_migracion_xp_v1") && p) {
+        localStorage.setItem("cl_migracion_xp_v1", "1")
+        const STORAGE_KEY = "cl_achievements_v2"
+        const xpActual = p.xp_total ?? 0
+        const desbloqueados = (() => {
+          try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") } catch { return [] }
+        })()
+        const nuevosLogros = [
+          { id: "xp_500",  name: "Gran Maestro", icon: "🔮", rarity: "epic",      rarityInfo: { label: "Épico",      color: "#c084fc", glow: "rgba(192,132,252,0.45)" }, umbral: 500  },
+          { id: "xp_800",  name: "Leyenda",       icon: "⚡", rarity: "epic",      rarityInfo: { label: "Épico",      color: "#c084fc", glow: "rgba(192,132,252,0.45)" }, umbral: 800  },
+          { id: "xp_1200", name: "Élite",         icon: "🌟", rarity: "legendary", rarityInfo: { label: "Legendario", color: "#ffd700", glow: "rgba(255,215,0,0.55)"   }, umbral: 1200 },
+        ].filter(l => xpActual >= l.umbral && !desbloqueados.includes(l.id))
+
+        if (nuevosLogros.length) {
+          const actualizados = [...desbloqueados, ...nuevosLogros.map(l => l.id)]
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(actualizados))
+          setCurAch(nuevosLogros[0])
+          setAchQueue(nuevosLogros.slice(1))
+        }
+      }
+
       // Logros: chequear al cargar perfil
       if (p) {
         const newAchs = checkNewAchievements({
