@@ -1,5 +1,5 @@
 # ContaLearn — Contexto actual
-> Última actualización: 2026-05-12 (sesión 9)
+> Última actualización: 2026-05-12 (sesión 10)
 
 ---
 
@@ -23,7 +23,10 @@
 - Práctica extra (`/practica?nivel=ID`): sin XP, banco reutilizable ✅
 - Empresa simulada (`/empresa`): dificultad adaptativa, banco `empresa_preguntas` ✅
 - Reportes: ⚠️ → Sonnet pre-filtra → panel `/admin` ✅
-- Logros (`/logros`): 16 logros con datos acumulativos reales en BD ✅
+- Logros (`/logros`): 19 logros con datos acumulativos reales en BD ✅
+  - 3 logros nuevos: xp_500 Gran Maestro (epic), xp_800 Leyenda (epic), xp_1200 Élite (legendary)
+  - xp_300 bajado de legendary → epic
+  - Migración retroactiva en dashboard (`cl_migracion_xp_v1`) para usuarios con XP previo
 - Logging de tokens Haiku en `api/generar-leccion` (visible en Vercel logs) ✅
 - **Modo Desafío** (`/desafio`) ✅
   - 10 preguntas mc/vf mezcladas de todos los niveles (2 por nivel, shuffle global)
@@ -31,7 +34,7 @@
   - Tiempo agotado = error + avance automático; sin vidas ni anti-farmeo
   - +10 XP por correcta, guardado en BD al terminar
   - Récord personal en `localStorage cl_desafio_best`; nuevo récord → partículas `rankUp` + `sound.rankUp()`
-  - Tarjeta "⚡ Modo Desafío" en `/niveles` con borde dorado, visible solo si el usuario tiene ≥1 nivel con dificultad `dificil` completada
+  - Tarjeta "⚡ Modo Desafío" en `/niveles` visible siempre: bloqueada hasta que usuario complete un nivel entero (fácil+normal+difícil), luego dorada y clickeable
 - **Ciclo de errores** ✅
   - Tutor IA recibe últimos 5 `user_mistakes` del usuario en el system prompt (via Bearer token → Supabase autenticado)
   - `/repasar`: modo estudio puro, carga errores por nivel, genera opciones MC (correcta + tu_respuesta + distractores del banco), elimina el registro al responder bien. Sin XP ni vidas.
@@ -43,11 +46,13 @@
 
 ## En qué punto quedamos
 
-**Sesión 9 (2026-05-12):** Modo Desafío completo — `/desafio` con timer 15 s, 10 preguntas multi-nivel, récord en localStorage. Tarjeta dorada en `/niveles` solo cuando hay dificil completado.
+**Sesión 10 (2026-05-12):** Extensión de rangos: 9 rangos (Gran Maestro 500 XP, Leyenda 800 XP, Élite 1200 XP) en `lib/rankTheme.js`. Ranking usa `getRankTheme` en vez de constante local. 3 logros nuevos sincronizados en `lib/achievements.js`. Migración retroactiva en dashboard para desbloquear logros a usuarios con XP previo. Dashboard fix: quitado frase duplicada del búho, ruta de aprendizaje dinámica (fetch 8 niveles reales de BD).
 
-**Sesión 8 (2026-05-12):** Ciclo de errores completo — `/repasar` (modo estudio, elimina errores dominados), tutor con contexto `user_mistakes` en system prompt, botón condicional en dashboard. Fix: localStorage `cl_mastered_mistakes` como fallback porque RLS no tenía política DELETE en `user_mistakes` → SQL en `sql/add_rls_delete_user_mistakes.sql` pendiente de correr en Supabase.
+**Sesión 9 (2026-05-12):** Modo Desafío completo — `/desafio` con timer 15 s, 10 preguntas multi-nivel (solo niveles desbloqueados, 2 por nivel), récord en `cl_desafio_best`. Tarjeta siempre visible en `/niveles`, bloqueada hasta completar un nivel entero.
 
-**Sesión 7 (2026-05-12):** RankUp visual (EpicMoment + partículas + sound), bonus regreso +20 XP, misión semanal con EpicMoment al completar. Fix build: `badge` no destructurado en desktop navbar → `ReferenceError` en prerender de `/admin`.
+**Sesión 8 (2026-05-12):** Ciclo de errores completo — `/repasar` (modo estudio, elimina errores dominados), tutor con contexto `user_mistakes` en system prompt (Bearer token), botón condicional en dashboard. Fix RLS DELETE en `user_mistakes` (`sql/add_rls_delete_user_mistakes.sql` ya corrida).
+
+**Sesión 7 (2026-05-12):** RankUp visual (EpicMoment + partículas + sound), bonus regreso +20 XP, misión semanal con EpicMoment al completar. Fix build: `badge` no destructurado en desktop navbar.
 
 ---
 
@@ -83,8 +88,8 @@ app/
   page.jsx                  Dashboard (misiones, misión semanal, bonus regreso, onboarding)
   niveles/page.jsx          8 niveles + desbloqueo por progreso_nivel
   lecciones/page.jsx        Motor del juego (IA, banco, rankUp, misión semanal, error boundary)
-  logros/page.jsx           16 logros con datos reales de BD
-  ranking/page.jsx          Tabla + titulo_empresa
+  logros/page.jsx           19 logros con datos reales de BD
+  ranking/page.jsx          Tabla + titulo_empresa (usa getRankTheme)
   tutor/page.jsx            Chat tutor IA
   practica/page.jsx         Práctica extra sin XP
   empresa/page.jsx          Modo empresa simulada
@@ -95,6 +100,8 @@ app/
   api/explicar/route.js     Haiku — explicaciones fin de sesión
   api/tutor/route.js        Haiku — chat tutor
   api/reportar/route.js     Sonnet — pre-filtro reportes
+  desafio/page.jsx          Modo desafío: timer 15 s, 10 preguntas, récord localStorage
+  repasar/page.jsx          Ciclo errores: estudio puro, elimina user_mistakes al dominar
 
 components/
   Onboarding.jsx            3 slides primera vez (localStorage cl_onboarding_v1)

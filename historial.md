@@ -53,6 +53,9 @@ CREATE INDEX idx_misiones_user_fecha ON misiones_diarias(user_id, fecha);
 | 💎 Platino | 180 |
 | 💠 Diamante | 240 |
 | 👑 Maestro | 300 |
+| 🔮 Gran Maestro | 500 |
+| ⚡ Leyenda | 800 |
+| 🌟 Élite | 1200 |
 
 ### Títulos modo empresa
 
@@ -375,5 +378,84 @@ SMTP               Gmail smtp.gmail.com:587 App Password
 |----------|-----|
 | `badge` no destructurado en desktop navbar (build crash) | Typo de sesión anterior, fix inmediato |
 | `pctFinal` calculado después de `actualizarMisiones` | Reordenado: pct primero, luego actualizarMisiones(vidas, nivelCompletado) |
+
+## [2026-05-12] — Sesión 8: ciclo de errores
+
+### Decisiones tomadas
+
+- **Tutor con contexto de errores**: se pasan los últimos 5 `user_mistakes` del usuario en el system prompt via Bearer token → Supabase autenticado en el server. El cliente envía `Authorization: Bearer <access_token>` en el fetch al tutor.
+- **`/repasar` sin XP ni vidas**: modo estudio puro. Genera opciones MC desde el banco (correcta + tu_respuesta + distractores de `nivel_preguntas`). Al responder correctamente elimina el registro de BD (`user_mistakes`).
+- **`cl_mastered_mistakes` localStorage**: fallback inmediato al marcar correcto, para que la pregunta desaparezca aunque RLS bloquee el DELETE (se filtra en el siguiente load por IDs guardados localmente).
+- **Dashboard muestra botón condicional**: "🔁 Repasar errores" solo si hay registros en `user_mistakes` para ese usuario.
+- **SQL `add_rls_delete_user_mistakes.sql`**: política RLS DELETE en `user_mistakes` para que `auth.uid() = user_id`. Creada y corrida en Supabase.
+
+### Funcionalidades completadas
+
+- `app/api/tutor/route.js` — Bearer token auth + últimos 5 errores en system prompt
+- `app/tutor/page.jsx` — envía `Authorization` header con access_token
+- `app/repasar/page.jsx` — nuevo: ciclo de errores, opciones MC, eliminación progresiva
+- `app/page.jsx` — botón condicional Repasar errores
+- `sql/add_rls_delete_user_mistakes.sql` — migration (ya corrida)
+
+### Problemas resueltos
+
+| Problema | Fix |
+|----------|-----|
+| Errores volvían a aparecer tras navegación | localStorage `cl_mastered_mistakes` filtra IDs ya dominados al cargar |
+| RLS no tenía política DELETE en user_mistakes | SQL con `USING (auth.uid() = user_id)` |
+
+---
+
+## [2026-05-12] — Sesión 9: modo desafío
+
+### Decisiones tomadas
+
+- **Timer 15 s con refs**: `resultadosRef`, `preguntasRef`, `avanzandoRef` evitan stale closures en setTimeout. Pattern `let stopped = false` dentro de useEffect en lugar de clearInterval dentro del setter.
+- **Solo niveles desbloqueados**: fetcha `progreso_nivel` + `niveles` ordenados, aplica misma lógica de desbloqueo que `/niveles`. Evita que aparezcan preguntas de niveles no alcanzados.
+- **2 preguntas por nivel**: agrupa por `nivel_id`, toma 2 aleatarias de cada grupo, mezcla global, recorta a 10. Distribución uniforme.
+- **Récord en localStorage** (`cl_desafio_best`): `correctas > prevBest` → partículas `rankUp` + `sound.rankUp()` para celebración.
+- **Tarjeta siempre visible en `/niveles`**: bloqueada si no tiene ningún nivel completo (fácil+normal+difícil). Mensaje explicativo cuando bloqueada. Borde dorado y clickeable cuando desbloqueada.
+
+### Funcionalidades completadas
+
+- `app/desafio/page.jsx` — nuevo: timer, avance automático por timeout, resultados, récord
+- `app/niveles/page.jsx` — tarjeta Modo Desafío siempre visible con estado bloqueado/desbloqueado
+
+### Problemas resueltos
+
+| Problema | Fix |
+|----------|-----|
+| Desafío mostraba preguntas de niveles no alcanzados | Filtra por nivel_ids desbloqueados (misma lógica que /niveles) |
+| Tarjeta no visible en /niveles | Siempre renderizada; solo cambia estilo/comportamiento según `progresoPorNivel.some(p => p.completo)` |
+
+---
+
+## [2026-05-12] — Sesión 10: rangos extendidos + logros sincronizados + fixes dashboard
+
+### Decisiones tomadas
+
+- **9 rangos en total** (antes 6): añadidos Gran Maestro (🔮 500 XP), Leyenda (⚡ 800 XP), Élite (🌟 1200 XP) a `lib/rankTheme.js`. El array `ORDER` controla la resolución; los nuevos rangos simplemente se añaden al final.
+- **Ranking usa `getRankTheme`**: se eliminó la constante `RANGOS` local en `ranking/page.jsx` que estaba desincronizada. Ahora importa directamente de `lib/rankTheme.js`.
+- **xp_300 bajado a epic** (era legendary): con 3 rangos nuevos sobre él, "Maestro" ya no merece legendary. Ajustado en `lib/achievements.js`.
+- **19 logros**: se añadieron xp_500 (Gran Maestro, epic), xp_800 (Leyenda, epic), xp_1200 (Élite, legendary) al catálogo.
+- **Migración retroactiva** (`cl_migracion_xp_v1`): bloque one-time en dashboard que lee XP actual de BD y desbloquea los nuevos logros si ya se cumplía el umbral. Guarda IDs en `cl_achievements_v2` y muestra toasts. Evitar re-run con clave localStorage.
+- **Ruta de aprendizaje dinámica**: antes tenía 5 niveles hardcodeados. Ahora fetcha todos los niveles de BD (`niveles` ordenados) y muestra los 8 reales.
+- **Frase del búho sin duplicado**: `fraseBuho` pasaba como `mensaje` prop a `<Mascota>` (aparece en la burbuja) y también se renderizaba en un `<p>` separado debajo. Se eliminó el `<p>` duplicado.
+
+### Funcionalidades completadas
+
+- `lib/rankTheme.js` — 3 rangos nuevos + ORDER actualizado
+- `lib/achievements.js` — 3 logros nuevos, xp_300 → epic
+- `app/ranking/page.jsx` — getRankTheme en lugar de RANGOS local
+- `app/page.jsx` — migración retroactiva de logros, ruta dinámica, frase sin duplicado
+
+### Problemas resueltos
+
+| Problema | Fix |
+|----------|-----|
+| Ranking mostraba solo 6 rangos (sin Gran Maestro/Leyenda/Élite) | getRankTheme import reemplaza constante local desactualizada |
+| Usuarios con XP alto no tenían nuevos logros | Migración retroactiva one-time al cargar dashboard |
+| Ruta de aprendizaje mostraba 5 niveles hardcodeados | Fetch dinámico de tabla `niveles` |
+| Frase búho aparecía dos veces | Eliminado `<p>{fraseBuho}</p>` debajo de Mascota |
 
 <!-- Agregar nuevas sesiones aquí arriba de esta línea, con formato [YYYY-MM-DD] -->
