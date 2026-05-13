@@ -246,7 +246,7 @@ export default function NivelesPage() {
 
           {/* Modo Desafío — siempre visible, bloqueado hasta completar al menos un fácil */}
           {(() => {
-            const desbloqueado = progresoPorNivel.some(p => p.pasos > 0)
+            const desbloqueado = progresoPorNivel.some(p => p.completo)
             return (
               <div className="mt-2">
                 <div className="flex items-center gap-2 mb-3">
@@ -287,7 +287,7 @@ export default function NivelesPage() {
                       <p className="text-sm text-zinc-400">
                         {desbloqueado
                           ? "10 preguntas · 15 s por pregunta · Todos los niveles"
-                          : "Completa un nivel en modo Fácil para activarlo"}
+                          : "Completa un nivel entero (Fácil + Normal + Difícil) para activarlo"}
                       </p>
                     </div>
                     {desbloqueado && <span className="text-zinc-400 text-2xl">›</span>}
