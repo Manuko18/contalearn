@@ -67,6 +67,7 @@ function LeccionInner() {
   const preguntasRespRef  = useRef(0)   // preguntas respondidas (correcto + incorrecto)
   const xpSesionRef     = useRef(0)     // XP real ganado esta sesión (solo primeras veces)
   const [cargandoJuego, setCargandoJuego] = useState(false)
+  const [errorJuego, setErrorJuego] = useState(null)
   const [dificultad, setDificultad] = useState("normal")
   const [botonListo, setBotonListo] = useState(false)
   const [botonFill, setBotonFill] = useState(0)
@@ -344,12 +345,20 @@ function LeccionInner() {
           textosEnSesion.push(pregunta.pregunta)
           if (pregunta.id) vistas = [...vistas, pregunta.id]
         }
-      } catch {}
+      } catch {
+        // pregunta individual falló — continuar con las demás
+      }
     }
 
     localStorage.setItem(storageKey, JSON.stringify(vistas))
 
-    setLecciones(mezclar(pqs.length > 0 ? pqs : []))
+    if (pqs.length === 0) {
+      setErrorJuego("No se pudo conectar con la IA. Verifica tu conexión e intenta de nuevo.")
+      setCargandoJuego(false)
+      return
+    }
+
+    setLecciones(mezclar(pqs))
     setCargandoJuego(false)
     setFase("juego")
   }
@@ -569,6 +578,23 @@ function LeccionInner() {
 
   if (loading) return <LoadingConti texto="Cargando lección..." />
   if (cargandoJuego) return <LoadingConti texto="Preparando ejercicios..." />
+  if (errorJuego) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4 text-center">
+      <span className="text-6xl">⚠️</span>
+      <div>
+        <h2 className="text-2xl font-extrabold mb-2">Algo salió mal</h2>
+        <p className="text-zinc-400 max-w-xs">{errorJuego}</p>
+      </div>
+      <button
+        onClick={() => { setErrorJuego(null); cargarPreguntasIA() }}
+        className="rounded-2xl px-8 py-4 font-extrabold text-white transition-all active:scale-95"
+        style={{ background: "var(--color-primary)", boxShadow: "0 4px 0 var(--color-primary-dark)" }}
+      >
+        🔄 Reintentar
+      </button>
+      <button onClick={() => router.push("/niveles")} className="text-zinc-500 text-sm underline">Volver a niveles</button>
+    </div>
+  )
   if (vidas <= 0) return <PantallaFin onVolver={() => router.push("/")} />
 
   // ── FASE TEORÍA ──

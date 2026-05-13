@@ -12,6 +12,7 @@ import { getFrase, getDiasDesdeUltimaLeccion } from "../lib/frases"
 import { getRankTheme } from "../lib/rankTheme"
 import { sound } from "../lib/audio"
 import { checkNewAchievements } from "../lib/achievements"
+import Onboarding from "../components/Onboarding"
 
 // ── Pool de misiones disponibles ──
 const MISIONES_POOL = [
@@ -61,6 +62,7 @@ export default function Home() {
 
     if (existentes && existentes.length >= 3) {
       setMisiones(existentes)
+      localStorage.setItem("cl_misiones_pendientes", existentes.filter(m => !m.completada).length.toString())
       return
     }
 
@@ -81,9 +83,12 @@ export default function Home() {
           xp_recompensa: m.xp ?? 15,
         })))
         .select()
-      setMisiones([...(existentes || []), ...(insertadas || [])])
+      const todas = [...(existentes || []), ...(insertadas || [])]
+      setMisiones(todas)
+      localStorage.setItem("cl_misiones_pendientes", todas.filter(m => !m.completada).length.toString())
     } else {
       setMisiones(existentes || [])
+      localStorage.setItem("cl_misiones_pendientes", (existentes || []).filter(m => !m.completada).length.toString())
     }
   }
 
@@ -482,6 +487,8 @@ export default function Home() {
         </div>
       </div>
       </PageTransition>
+
+      <Onboarding />
 
       {/* Achievement toast queue */}
       <AchievementToast

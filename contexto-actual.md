@@ -1,5 +1,5 @@
 # ContaLearn — Contexto actual
-> Última actualización: 2026-05-15 (sesión 5)
+> Última actualización: 2026-05-12 (sesión 6)
 
 ---
 
@@ -24,6 +24,8 @@
 ## En qué punto quedamos
 
 Sesión 2026-05-15: vidas en tiempo real, pool misiones ampliado (6→10), logros con datos reales en BD, página `/logros`. SQL de columnas logros ya corrido en Supabase.
+
+Sesión 2026-05-12 (sesión 6): logging de tokens en `generar-leccion`, error boundary en lecciones (crash cuando IA falla 10/10), onboarding 3 slides para usuarios nuevos (`Onboarding.jsx`), badge rojo de misiones pendientes en Navbar (vía localStorage `cl_misiones_pendientes`), documentadas `nivel_preguntas` y `progreso_nivel` en contexto.
 
 ---
 
@@ -74,6 +76,10 @@ app/
 
 **BD tabla `users`:** xp_total, racha_actual, vidas, ultima_vida_recargada, empresa_mes, titulo_empresa, **max_combo, perfect_sessions, clean_sessions**
 
-**BD otras tablas:** niveles · lecciones (sin uso) · progreso_nivel · nivel_preguntas · user_mistakes · empresa_preguntas · reportes_preguntas · misiones_diarias · progreso_usuario (legacy)
+**BD tabla `nivel_preguntas`:** id, nivel_id, pregunta, opciones (jsonb), respuesta_correcta, explicacion, dificultad (`facil`|`normal`|`dificil`), slide_idx, tipo (`multiple_choice`|`verdadero_falso`|`completar_espacio`) — límite 20/dificultad por nivel (60 máx por nivel)
+
+**BD tabla `progreso_nivel`:** user_id, nivel_id, dificultad — clave única `(user_id, nivel_id, dificultad)` — controla desbloqueo de siguiente nivel
+
+**BD otras tablas:** niveles · lecciones (sin uso) · user_mistakes · empresa_preguntas · reportes_preguntas · misiones_diarias · progreso_usuario (legacy)
 
 **Git push siempre:** `git push origin HEAD:main`

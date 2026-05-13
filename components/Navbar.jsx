@@ -2,15 +2,22 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
 
 const links = [
-  { href: "/",        icon: "🏠", label: "Inicio"  },
+  { href: "/",        icon: "🏠", label: "Inicio", badge: true },
   { href: "/niveles", icon: "📚", label: "Niveles" },
   { href: "/ranking", icon: "🏆", label: "Ranking" },
 ]
 
 export default function Navbar() {
   const pathname = usePathname()
+  const [misionesPendientes, setMisionesPendientes] = useState(0)
+
+  useEffect(() => {
+    const n = parseInt(localStorage.getItem("cl_misiones_pendientes") || "0", 10)
+    setMisionesPendientes(n)
+  }, [pathname])
 
   return (
     <>
@@ -75,7 +82,12 @@ export default function Navbar() {
                   />
                 )}
 
-                <span className="relative text-base">{icon}</span>
+                <span className="relative text-base">
+                  {icon}
+                  {badge && misionesPendientes > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full" style={{ background: "var(--color-danger)" }} />
+                  )}
+                </span>
                 <span className="relative">{label}</span>
 
                 {/* Active underline bar */}
@@ -106,7 +118,7 @@ export default function Navbar() {
           boxShadow: "0 -2px 24px rgba(0,0,0,0.4)",
         }}
       >
-        {links.map(({ href, icon, label }) => {
+        {links.map(({ href, icon, label, badge }) => {
           const active = pathname === href
           return (
             <Link
@@ -131,6 +143,9 @@ export default function Navbar() {
                 }}
               >
                 {icon}
+                {badge && misionesPendientes > 0 && (
+                  <span className="absolute top-0 right-0 w-2 h-2 rounded-full" style={{ background: "var(--color-danger)" }} />
+                )}
               </span>
               <span
                 className="relative text-[10px] font-bold"

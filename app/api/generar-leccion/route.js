@@ -202,11 +202,13 @@ export async function POST(req) {
 
     const prompt = promptPorTipo(tipo, slideTema, nivelDificultad, tipoAngulo, evitar)
 
-    const { content } = await client.messages.create({
+    const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     })
+    const { content, usage } = response
+    console.log(`[generar-leccion] nivel=${nivelId} dif=${dificultad} tipo=${tipo} fromCache=false tokens=in:${usage?.input_tokens} out:${usage?.output_tokens} total:${(usage?.input_tokens ?? 0) + (usage?.output_tokens ?? 0)}`)
 
     const texto = content[0].text.trim()
     const jsonMatch = texto.match(/\{[\s\S]*\}/)
