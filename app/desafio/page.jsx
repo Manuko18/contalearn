@@ -43,10 +43,32 @@ export default function DesafioPage() {
       if (!user) { router.push("/login"); return }
       userRef.current = user
 
+      // Determinar qué niveles tiene desbloqueados el usuario
+      const [{ data: nivelesData }, { data: progresoData }] = await Promise.all([
+        supabase.from("niveles").select("id").order("orden", { ascending: true }),
+        supabase.from("progreso_nivel").select("nivel_id, dificultad").eq("user_id", user.id),
+      ])
+
+      const difsPorNivel = {}
+      ;(progresoData || []).forEach(p => {
+        if (!difsPorNivel[p.nivel_id]) difsPorNivel[p.nivel_id] = new Set()
+        difsPorNivel[p.nivel_id].add(p.dificultad)
+      })
+
+      const nivelesOrdenados = nivelesData || []
+      const nivelesDesbloqueados = new Set(
+        nivelesOrdenados
+          .filter((n, i) => i === 0 || difsPorNivel[nivelesOrdenados[i - 1]?.id]?.has("dificil"))
+          .map(n => n.id)
+      )
+
+      if (!nivelesDesbloqueados.size) { setLoading(false); return }
+
       const { data: todas } = await supabase
         .from("nivel_preguntas")
         .select("id, nivel_id, pregunta, opciones, respuesta_correcta, tipo")
         .in("tipo", ["multiple_choice", "verdadero_falso"])
+        .in("nivel_id", [...nivelesDesbloqueados])
 
       if (!todas?.length) { setLoading(false); return }
 
