@@ -1,37 +1,42 @@
 # ContaLearn — Contexto actual
-> Última actualización: 2026-05-12 (sesión 6)
+> Última actualización: 2026-05-12 (sesión 7)
 
 ---
 
 ## Estado de la app (qué funciona hoy)
 
-- Login / registro / recuperar contraseña ✅
-- Dashboard: XP, vidas (countdown en tiempo real), racha, rango, misiones (10 tipos, 3 niveles XP) ✅
-- 8 niveles lineales agrupados en Básico/Intermedio/Avanzado/Experto ✅
-- **Desbloqueo por progresión**: completar Fácil→Normal→Difícil desbloquea el siguiente nivel ✅
-- Teoría con voz sincronizada + juego: timer 30s, vidas, combo, sonidos, partículas ✅
-- **Preguntas IA** en lecciones: 10/sesión, 3 tipos (mc/vf/completar), banco `nivel_preguntas` ✅
-  - Anti-duplicados, rota por slide, límite 20/dificultad (60 máx por nivel)
-- Explicaciones IA al final con historial `user_mistakes` ✅
-- **Tutor IA** (`/tutor?nivel=ID`) ✅
-- **Práctica extra** (`/practica?nivel=ID`): sin XP, banco reutilizable ✅
-- **Empresa simulada** (`/empresa`): dificultad adaptativa, banco `empresa_preguntas` ✅
-- **Reportes**: ⚠️ → Sonnet pre-filtra → panel `/admin` ✅
-- **Logros** (`/logros`): 16 logros, datos acumulativos reales en BD ✅
+- Auth: login / registro / recuperar contraseña ✅
+- Dashboard: XP, vidas (countdown tiempo real), racha, rango, misiones diarias (10 tipos), misión semanal separada ✅
+- 8 niveles lineales (Básico/Intermedio/Avanzado/Experto) con desbloqueo Fácil→Normal→Difícil ✅
+- Teoría con voz sincronizada por slide ✅
+- Juego: timer 30s, vidas, combo, sonidos, partículas ✅
+- **Preguntas IA**: 10/sesión, 3 tipos (mc/vf/completar), banco `nivel_preguntas` (20/dif, 60 máx/nivel) ✅
+  - Anti-duplicados, rotación por slide, `angulo` controla tipo+slide
+- Explicaciones IA al final (Haiku) con historial `user_mistakes` ✅
+- **RankUp**: al cruzar umbral XP → EpicMoment + partículas `rankUp` + `sound.rankUp()` ✅
+- **Bonus de regreso**: +20 XP si ≥ 2 días sin entrar (clave `cl_regreso_[fecha]`) ✅
+- **Misión semanal**: "Completa 3 niveles esta semana", 100 XP, borde púrpura, separada en dashboard ✅
+- **Onboarding** 3 slides (primera vez, clave `cl_onboarding_v1`) ✅
+- **Badge rojo** en navbar ícono Inicio cuando hay misiones pendientes (`cl_misiones_pendientes`) ✅
+- **Error boundary** en lecciones: si IA falla 10/10 → pantalla con mensaje + reintentar ✅
+- Tutor IA (`/tutor?nivel=ID`) ✅
+- Práctica extra (`/practica?nivel=ID`): sin XP, banco reutilizable ✅
+- Empresa simulada (`/empresa`): dificultad adaptativa, banco `empresa_preguntas` ✅
+- Reportes: ⚠️ → Sonnet pre-filtra → panel `/admin` ✅
+- Logros (`/logros`): 16 logros con datos acumulativos reales en BD ✅
+- Logging de tokens Haiku en `api/generar-leccion` (visible en Vercel logs) ✅
 
 ---
 
 ## En qué punto quedamos
 
-Sesión 2026-05-15: vidas en tiempo real, pool misiones ampliado (6→10), logros con datos reales en BD, página `/logros`. SQL de columnas logros ya corrido en Supabase.
-
-Sesión 2026-05-12 (sesión 6): logging de tokens en `generar-leccion`, error boundary en lecciones (crash cuando IA falla 10/10), onboarding 3 slides para usuarios nuevos (`Onboarding.jsx`), badge rojo de misiones pendientes en Navbar (vía localStorage `cl_misiones_pendientes`), documentadas `nivel_preguntas` y `progreso_nivel` en contexto.
+**Sesión 7 (2026-05-12):** RankUp visual (EpicMoment + partículas + sound), bonus regreso +20 XP, misión semanal con EpicMoment al completar. Fix build: `badge` no destructurado en desktop navbar → `ReferenceError` en prerender de `/admin`.
 
 ---
 
 ## Pendientes inmediatos
 
-_(ninguno urgente)_
+⚠️ **Correr en Supabase SQL Editor:** [`sql/add_tipo_periodo.sql`](sql/add_tipo_periodo.sql) — agrega columna `tipo_periodo` a `misiones_diarias`. Sin esto, la misión semanal falla al insertar.
 
 ---
 
@@ -39,8 +44,9 @@ _(ninguno urgente)_
 
 | Problema | Impacto | Notas |
 |----------|---------|-------|
-| Imágenes en preguntas (`imagen_url`) | Bajo | Columna existe en BD, sin URLs |
-| Tabla `lecciones` sin uso | Bajo | Existe en BD pero el juego ya usa solo IA |
+| Migration `tipo_periodo` no corrida | Alto | Bloquea creación de misión semanal |
+| Imágenes en preguntas (`imagen_url`) | Bajo | Columna existe en BD, sin URLs reales |
+| Tabla `lecciones` sin uso | Info | Existe en BD pero el juego ya usa solo IA |
 
 ---
 
@@ -54,32 +60,47 @@ _(ninguno urgente)_
 
 **Modelos:** Haiku (`claude-haiku-4-5-20251001`) para todo · Sonnet (`claude-sonnet-4-6`) solo reportes
 
+**Admin emails:** lotor210799@gmail.com · lotor5252@gmail.com (URL `/admin` no vinculada en la app)
+
 ```
 app/
-  page.jsx                  Dashboard
+  page.jsx                  Dashboard (misiones, misión semanal, bonus regreso, onboarding)
   niveles/page.jsx          8 niveles + desbloqueo por progreso_nivel
-  lecciones/page.jsx        Motor del juego (IA, banco, progresión dificultad)
-  logros/page.jsx           Página de logros
+  lecciones/page.jsx        Motor del juego (IA, banco, rankUp, misión semanal, error boundary)
+  logros/page.jsx           16 logros con datos reales de BD
   ranking/page.jsx          Tabla + titulo_empresa
   tutor/page.jsx            Chat tutor IA
   practica/page.jsx         Práctica extra sin XP
   empresa/page.jsx          Modo empresa simulada
-  admin/page.jsx            Panel admin
+  admin/page.jsx            Panel admin (Sonnet pre-filtra)
+  api/generar-leccion/      Haiku — lecciones (banco nivel_preguntas) + logging tokens
+  api/generar-ejercicio/    Haiku — práctica (sin banco)
+  api/empresa/route.js      Haiku — empresa (banco empresa_preguntas)
   api/explicar/route.js     Haiku — explicaciones fin de sesión
   api/tutor/route.js        Haiku — chat tutor
-  api/generar-ejercicio/    Haiku — práctica (sin banco)
-  api/generar-leccion/      Haiku — lecciones (banco nivel_preguntas)
-  api/empresa/route.js      Haiku — empresa (banco empresa_preguntas)
   api/reportar/route.js     Sonnet — pre-filtro reportes
-  sql/add_achievement_columns.sql  ← ya corrida en Supabase
+
+components/
+  Onboarding.jsx            3 slides primera vez (localStorage cl_onboarding_v1)
+  Particles.jsx             Partículas (presets en lib/particles.js)
+  EpicMoment.jsx            Overlays: rankUp/levelComplete/perfectRun/missionComplete/comboMax/unlock
+  AchievementToast.jsx      Toast de logros
+  Mascota.jsx               Conti Core evolutivo por XP
+  Navbar.jsx                Badge rojo misiones en ícono Inicio
+
+sql/
+  add_achievement_columns.sql  ← ya corrida en Supabase
+  add_tipo_periodo.sql         ← PENDIENTE CORRER
 ```
 
-**BD tabla `users`:** xp_total, racha_actual, vidas, ultima_vida_recargada, empresa_mes, titulo_empresa, **max_combo, perfect_sessions, clean_sessions**
+**BD tabla `users`:** xp_total, racha_actual, vidas, ultima_vida_recargada, ultima_leccion_fecha, empresa_mes, titulo_empresa, max_combo, perfect_sessions, clean_sessions
 
-**BD tabla `nivel_preguntas`:** id, nivel_id, pregunta, opciones (jsonb), respuesta_correcta, explicacion, dificultad (`facil`|`normal`|`dificil`), slide_idx, tipo (`multiple_choice`|`verdadero_falso`|`completar_espacio`) — límite 20/dificultad por nivel (60 máx por nivel)
+**BD tabla `nivel_preguntas`:** id, nivel_id, pregunta, opciones (jsonb), respuesta_correcta, explicacion, dificultad (`facil`|`normal`|`dificil`), slide_idx, tipo (`multiple_choice`|`verdadero_falso`|`completar_espacio`) — límite 20/dificultad (60 máx/nivel)
 
-**BD tabla `progreso_nivel`:** user_id, nivel_id, dificultad — clave única `(user_id, nivel_id, dificultad)` — controla desbloqueo de siguiente nivel
+**BD tabla `progreso_nivel`:** user_id, nivel_id, dificultad — unique(user_id, nivel_id, dificultad) — controla desbloqueo de siguiente nivel
 
-**BD otras tablas:** niveles · lecciones (sin uso) · user_mistakes · empresa_preguntas · reportes_preguntas · misiones_diarias · progreso_usuario (legacy)
+**BD tabla `misiones_diarias`:** id, user_id, fecha, tipo, tipo_periodo (`diaria`|`semanal`), descripcion, icono, meta, progreso, completada, xp_recompensa — diarias: fecha=hoy · semanal: fecha=lunes de la semana
+
+**BD otras tablas:** niveles · lecciones (sin uso) · user_mistakes · empresa_preguntas · reportes_preguntas · progreso_usuario (legacy)
 
 **Git push siempre:** `git push origin HEAD:main`

@@ -325,4 +325,55 @@ SMTP               Gmail smtp.gmail.com:587 App Password
 | Pool de misiones repetitivo (solo 6 tipos iguales) | 10 tipos con 3 niveles de XP (10/15/25) |
 | `racha: 0` conservador en checkNewAchievements | Ahora lee `racha_actual` real desde BD al terminar sesión |
 
+## [2026-05-12] — Sesión 6: resilencia, onboarding y retención básica
+
+### Decisiones tomadas
+
+- **Error boundary en lecciones**: el `catch {}` vacío del loop de fetches dejaba `lecciones=[]` y la fase juego crasheaba. Ahora si los 10 fetches fallan → pantalla con mensaje + botón Reintentar. Si falla alguno pero no todos → continúa con las preguntas que llegaron.
+- **Onboarding 3 slides** (`Onboarding.jsx`): se muestra la primera vez vía `localStorage cl_onboarding_v1`. Slides: Vidas / XP y rangos / Niveles y progresión. Opción "Saltar tutorial".
+- **Badge misiones en Navbar** (punto rojo en ícono Inicio): se escribe `cl_misiones_pendientes` en localStorage cada vez que el dashboard carga misiones. El Navbar lo lee con `useEffect` al montar y al cambiar `pathname`. No requiere query extra a Supabase.
+- **Logging de tokens** en `api/generar-leccion`: loguea `in/out/total` tokens de Haiku solo en generaciones nuevas (no en hits de caché). Visible en Vercel Functions logs.
+- **`completar_espacio` mantenido**: aunque genera más errores de parseo, se decidió mantener los 3 tipos por ahora. El prompt tiene restricciones estrictas (máx 2 palabras, sin "X o Y").
+
+### Funcionalidades completadas
+
+- `components/Onboarding.jsx` — nuevo
+- `components/Navbar.jsx` — badge rojo misiones pendientes
+- `app/lecciones/page.jsx` — estado `errorJuego`, pantalla con mensaje y botón Reintentar
+- `app/page.jsx` — escribe `cl_misiones_pendientes` al cargar misiones
+- `api/generar-leccion/route.js` — logging de tokens
+
+### Problemas resueltos
+
+| Problema | Fix |
+|----------|-----|
+| Juego crasha silencioso si IA falla | Error boundary: pantalla + reintentar |
+| `badge` no destructurado en navbar desktop | `{ href, icon, label, badge }` en ambos `.map()` — causaba `ReferenceError` en prerender `/admin` |
+
+---
+
+## [2026-05-12] — Sesión 7: retención avanzada (rankUp, bonus regreso, misión semanal)
+
+### Decisiones tomadas
+
+- **RankUp detectado en `verificar()`** (no en `siguiente()`): el XP sube pregunta a pregunta, así que se compara `getRankKey(xp)` vs `getRankKey(nuevoXp)` antes/después del UPDATE. Solo se dispara una vez por sesión (cuando cruza el umbral).
+- **`EpicMoment` para rankUp**: se reutiliza el sistema existente con `type: "rankUp"` (ya tenía su config gold en EpicMoment.jsx). Se añade además `<Particles key={rankUpKey} preset="rankUp" />` para el efecto visual independiente.
+- **Bonus de regreso calcula días exactos** con `Math.floor((Date.now() - ultima.getTime()) / 86400000)`. Clave `cl_regreso_[hoy]` evita repetir en el mismo día. El +20 XP se suma directamente al perfil `p` antes de `setPerfil()` para que el dashboard lo muestre de inmediato.
+- **Misión semanal usa `fecha = lunes`** como clave de semana (no hay columna de semana ISO). Permite que la query use el índice existente `idx_misiones_user_fecha`. La columna `tipo_periodo` es obligatoria → requiere migration `sql/add_tipo_periodo.sql`.
+- **`actualizarMisiones` recibe `nivelCompletado`**: `pctFinal` se calcula ANTES de llamar a `actualizarMisiones` para poder pasarle el booleano. El orden anterior (actualizarMisiones → pctFinal) era un bug potencial resuelto de paso.
+- **EpicMoment de misión semanal**: usa `type: "missionComplete"` + `sound.missionComplete()` al completar las 3 semanas.
+
+### Funcionalidades completadas
+
+- `app/lecciones/page.jsx` — rankUp (getRankKey, sound.rankUp, Particles, EpicMoment), actualizarMisiones refactorizado con nivelCompletado, update misión semanal al completar nivel
+- `app/page.jsx` — bonus regreso (+20 XP, banner animado, Particles xpGain), cargarOGenerarMisionSemanal(), getLunes(), tarjeta semanal con borde púrpura en dashboard
+- `sql/add_tipo_periodo.sql` — migration (PENDIENTE CORRER en Supabase)
+
+### Problemas resueltos
+
+| Problema | Fix |
+|----------|-----|
+| `badge` no destructurado en desktop navbar (build crash) | Typo de sesión anterior, fix inmediato |
+| `pctFinal` calculado después de `actualizarMisiones` | Reordenado: pct primero, luego actualizarMisiones(vidas, nivelCompletado) |
+
 <!-- Agregar nuevas sesiones aquí arriba de esta línea, con formato [YYYY-MM-DD] -->
