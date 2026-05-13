@@ -30,7 +30,7 @@
   - `/repasar`: modo estudio puro, carga errores por nivel, genera opciones MC (correcta + tu_respuesta + distractores del banco), elimina el registro al responder bien. Sin XP ni vidas.
   - Dashboard muestra botón "🔁 Repasar errores" solo si hay registros en `user_mistakes`
   - localStorage `cl_mastered_mistakes` como fallback si RLS bloquea DELETE
-  - **⚠️ SQL pendiente de correr en Supabase:** `sql/add_rls_delete_user_mistakes.sql` — política DELETE para `user_mistakes`
+  - Política RLS DELETE en `user_mistakes` activa (`sql/add_rls_delete_user_mistakes.sql` ya corrida)
 
 ---
 
@@ -44,8 +44,7 @@
 
 ## Pendientes inmediatos
 
-- **Correr en Supabase SQL Editor:** `sql/add_rls_delete_user_mistakes.sql`
-  Activa política DELETE en `user_mistakes` para que el borrado funcione en cualquier dispositivo (ahora solo funciona por localStorage)
+_(ninguno urgente)_
 
 ---
 
@@ -99,7 +98,7 @@ components/
 sql/
   add_achievement_columns.sql        ← ya corrida en Supabase
   add_tipo_periodo.sql               ← ya corrida en Supabase
-  add_rls_delete_user_mistakes.sql   ← PENDIENTE correr en Supabase
+  add_rls_delete_user_mistakes.sql   ← ya corrida en Supabase
 ```
 
 **BD tabla `users`:** xp_total, racha_actual, vidas, ultima_vida_recargada, ultima_leccion_fecha, empresa_mes, titulo_empresa, max_combo, perfect_sessions, clean_sessions
