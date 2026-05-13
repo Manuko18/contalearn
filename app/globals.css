@@ -47,6 +47,7 @@ body {
   color: var(--text);
   font-family: var(--font-manrope, 'Manrope'), 'Geist', system-ui, sans-serif;
   font-feature-settings: 'cv11', 'ss01';
+  overflow-x: hidden;
 }
 
 /* ============== BASE SCREEN =============== */
@@ -54,6 +55,7 @@ body {
   position: relative;
   width: 100%;
   min-height: 100dvh;
+  overflow-x: hidden;
   background:
     radial-gradient(ellipse 80% 50% at 50% 0%, #0f2244 0%, transparent 60%),
     radial-gradient(ellipse 60% 40% at 100% 100%, #0c1a36 0%, transparent 55%),
