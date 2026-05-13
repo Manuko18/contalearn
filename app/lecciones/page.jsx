@@ -26,6 +26,60 @@ function mostrarRespuesta(val) {
   return val
 }
 
+function Heart({ filled }) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" style={{ flexShrink: 0 }}>
+      <path
+        d="M12 21s-7.5-4.5-9.5-9.5C1 7 4 4 7 4c2 0 3.5 1 5 3 1.5-2 3-3 5-3 3 0 6 3 4.5 7.5C19.5 16.5 12 21 12 21z"
+        fill={filled ? "#ef4444" : "transparent"}
+        stroke={filled ? "#ef4444" : "rgba(255,255,255,0.22)"}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function getOptionStyle(val, feedbackState, respuesta, correcta) {
+  const isSelected = respuesta === val
+  const isCorrect  = val === correcta
+  if (feedbackState === "idle") {
+    if (isSelected) return {
+      bg: "rgba(6,182,212,0.1)", border: "#06b6d4", borderStyle: "solid",
+      shadow: "0 0 0 1px rgba(6,182,212,0.3), 0 0 18px rgba(6,182,212,0.18)",
+      letterBg: "rgba(6,182,212,0.25)", letterColor: "#67e8f9", opacity: 1,
+    }
+    return {
+      bg: "#14213d", border: "rgba(255,255,255,0.14)", borderStyle: "solid",
+      shadow: "0 4px 0 rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.04)",
+      letterBg: "rgba(255,255,255,0.06)", letterColor: "#a4b1c6", opacity: 1,
+    }
+  }
+  if (isSelected && isCorrect) return {
+    bg: "linear-gradient(135deg, rgba(34,197,94,0.22), rgba(34,197,94,0.1))",
+    border: "#22c55e", borderStyle: "solid",
+    shadow: "0 0 0 1px rgba(34,197,94,0.3), 0 0 30px rgba(34,197,94,0.45)",
+    letterBg: "#22c55e", letterColor: "#042713", opacity: 1,
+    animation: "qs-correct-pulse 1.2s ease-out",
+  }
+  if (isSelected && !isCorrect) return {
+    bg: "linear-gradient(135deg, rgba(239,68,68,0.22), rgba(239,68,68,0.1))",
+    border: "#ef4444", borderStyle: "solid",
+    shadow: "0 0 0 1px rgba(239,68,68,0.3), 0 0 22px rgba(239,68,68,0.4)",
+    letterBg: "#ef4444", letterColor: "#2a0707", opacity: 1,
+  }
+  if (!isSelected && isCorrect) return {
+    bg: "rgba(34,197,94,0.07)", border: "rgba(34,197,94,0.55)", borderStyle: "dashed",
+    shadow: "none", letterBg: "rgba(34,197,94,0.18)", letterColor: "#4ade80",
+    color: "#4ade80", opacity: 1,
+  }
+  return {
+    bg: "#14213d", border: "rgba(255,255,255,0.08)", borderStyle: "solid",
+    shadow: "0 2px 0 rgba(0,0,0,0.2)", letterBg: "rgba(255,255,255,0.04)",
+    letterColor: "#6b7a93", opacity: 0.35,
+  }
+}
+
 /** Despacha un evento al fondo dinámico y otros listeners */
 function emitContiEvent(type) {
   if (typeof window !== "undefined") {
@@ -926,29 +980,86 @@ function LeccionInner() {
     )
   }
 
-  // ── FASE JUEGO ──
+  // ── FASE JUEGO (rediseño) ──
   const leccion = lecciones[indice]
   const c = leccion.contenido_json
   const pct = (indice / lecciones.length) * 100
   const tiempoPct = (tiempo / TIEMPO_POR_PREGUNTA) * 100
-  const tiempoColor = tiempo > 15 ? "var(--color-primary)" : tiempo > 7 ? "var(--color-warning)" : "var(--color-danger)"
+  const tiempoColor = tiempo > 15 ? "#22c55e" : tiempo > 7 ? "#fbbf24" : "#ef4444"
+
+  const feedbackState = estado === "correcto" ? "correct"
+    : (estado === "incorrecto" || estado === "tiempo") ? "incorrect"
+    : "idle"
+
+  const mascotaEstado = feedbackState === "correct" ? "celebrando"
+    : feedbackState === "incorrect" ? "triste"
+    : combo >= 3 ? "feliz" : "pensando"
+
+  const bubbleMsg = feedbackState === "correct"
+    ? { bold: "¡Correcto!", rest: combo > 1 ? ` +10 XP · combo ×${combo}` : " +10 XP" }
+    : feedbackState === "incorrect"
+      ? { bold: estado === "tiempo" ? "⏱ Tiempo." : "Casi.",
+          rest: estado === "tiempo" ? " Se acabó el tiempo" : ` ${mostrarRespuesta(String(c.respuesta_correcta))} era la correcta` }
+      : combo >= 3
+        ? { bold: `Combo ×${combo} 🔥`, rest: " ¡Imparable!" }
+        : { bold: "Conti", rest: " · Piénsalo con calma" }
+
+  const orb1Color = feedbackState === "correct" ? "rgba(34,197,94,0.9)"
+    : feedbackState === "incorrect" ? "rgba(239,68,68,0.85)"
+    : "rgba(34,197,94,0.6)"
+  const orb1Opacity = feedbackState === "idle" ? 0.45 : feedbackState === "correct" ? 0.82 : 0.68
+
+  const LETTERS = ["A","B","C","D","E"]
 
   return (
-    <div className={`min-h-screen flex flex-col ${animacion === "correcto" ? "animate-pop-in" : animacion === "incorrecto" ? "animate-shake" : ""}`} style={{ background: "transparent" }}>
+    <div style={{
+      position: "relative", minHeight: "100vh", overflow: "hidden",
+      background: "radial-gradient(ellipse 80% 50% at 50% 0%, #0f2244 0%, transparent 60%), radial-gradient(ellipse 60% 40% at 100% 100%, #0c1a36 0%, transparent 55%), linear-gradient(180deg, #060b18 0%, #0a1428 100%)",
+      color: "#f1f5fb",
+      fontFamily: "'Manrope', 'Geist', system-ui, sans-serif",
+    }}>
+
+      {/* ── Animaciones CSS ── */}
+      <style>{`
+        @keyframes qs-shine { 0% { transform:translateX(-100%) } 100% { transform:translateX(100%) } }
+        @keyframes qs-correct-pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,0.6)} 60%{box-shadow:0 0 0 16px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 1px rgba(34,197,94,0.3),0 0 30px rgba(34,197,94,0.45)} }
+        @keyframes qs-shake { 10%,90%{transform:translateX(-2px)} 20%,80%{transform:translateX(3px)} 30%,50%,70%{transform:translateX(-5px)} 40%,60%{transform:translateX(5px)} }
+        @keyframes qs-combo-pulse { 0%,100%{box-shadow:0 0 12px rgba(251,191,36,0.2);transform:scale(1)} 50%{box-shadow:0 0 22px rgba(251,191,36,0.5);transform:scale(1.05)} }
+        .qs-option-shake { animation: qs-shake 0.5s cubic-bezier(.36,.07,.19,.97) }
+      `}</style>
+
+      {/* ── Ambient orbs ── */}
+      <div style={{
+        position: "absolute", width: 320, height: 320, top: -80, right: -80,
+        borderRadius: 999, filter: "blur(60px)", pointerEvents: "none", zIndex: 0,
+        mixBlendMode: "screen", opacity: orb1Opacity,
+        background: `radial-gradient(circle, ${orb1Color}, transparent 65%)`,
+        transition: "background 0.6s ease, opacity 0.6s ease",
+      }} />
+      <div style={{
+        position: "absolute", width: 380, height: 380, bottom: -120, left: -100,
+        borderRadius: 999, filter: "blur(60px)", pointerEvents: "none", zIndex: 0,
+        mixBlendMode: "screen", opacity: 0.45,
+        background: "radial-gradient(circle, rgba(6,182,212,0.45), transparent 65%)",
+      }} />
+
+      {/* ── Grid overlay ── */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0,
+        backgroundImage: "linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)",
+        backgroundSize: "40px 40px",
+        maskImage: "radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent)",
+        WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent)",
+      }} />
 
       {/* ── Partículas de acierto ── */}
       {mostrarParticulas && (
         <div className="fixed inset-0 pointer-events-none z-40 flex items-center justify-center">
           {Array.from({ length: 14 }, (_, i) => (
-            <div key={i}
-              className="absolute rounded-full animate-particle"
-              style={{
-                width:  `${8 + (i % 3) * 4}px`,
-                height: `${8 + (i % 3) * 4}px`,
-                background: ["#58cc02","#ffc800","#ff4b4b","#1cb0f6","#c084fc","#f59e0b"][i % 6],
-                "--ang": `${(360 / 14) * i}deg`,
-              }}
-            />
+            <div key={i} className="absolute rounded-full animate-particle"
+              style={{ width: `${8+(i%3)*4}px`, height: `${8+(i%3)*4}px`,
+                background: ["#22c55e","#fbbf24","#ef4444","#06b6d4","#a78bfa","#f59e0b"][i%6],
+                "--ang": `${(360/14)*i}deg` }} />
           ))}
         </div>
       )}
@@ -960,28 +1071,13 @@ function LeccionInner() {
       <EpicMoment event={epicEvent} onDone={() => setEpicEvent(null)} />
 
       {/* ── Achievement Toast ── */}
-      <AchievementToast
-        achievement={curAch}
-        onDone={() => {
-          const next = achQueue[0] ?? null
-          setCurAch(next)
-          setAchQueue(q => q.slice(1))
-        }}
-      />
+      <AchievementToast achievement={curAch} onDone={() => { setCurAch(achQueue[0]??null); setAchQueue(q=>q.slice(1)) }} />
 
       {/* ── XP flotante ── */}
       {showFloatXP && (
-        <div
-          className="fixed z-50 pointer-events-none float-xp"
-          style={{ top: "32%", left: "50%" }}
-        >
-          <p
-            className="text-4xl font-extrabold whitespace-nowrap"
-            style={{
-              color: "var(--color-primary)",
-              textShadow: "0 0 28px rgba(88,204,2,0.9), 0 2px 0 rgba(0,0,0,0.5)",
-            }}
-          >
+        <div className="fixed z-50 pointer-events-none float-xp" style={{ top: "30%", left: "50%" }}>
+          <p className="text-4xl font-extrabold whitespace-nowrap"
+            style={{ color: "#22c55e", textShadow: "0 0 28px rgba(34,197,94,0.9), 0 2px 0 rgba(0,0,0,0.5)" }}>
             +10 XP ⚡
           </p>
         </div>
@@ -991,192 +1087,236 @@ function LeccionInner() {
       {mostrarCombo && (
         <div className="fixed z-50 pointer-events-none animate-combo-pop"
           style={{ top: "38%", left: "50%", transform: "translate(-50%,-50%)" }}>
-          <div className="text-center">
-            <p className="text-5xl font-extrabold leading-none"
-              style={{ color: "#ffc800", textShadow: "0 0 24px #ffc80088, 0 2px 0 #00000066" }}>
-              COMBO ×{combo}
-            </p>
-            <p className="text-4xl mt-1">🔥</p>
-          </div>
-        </div>
-      )}
-
-      {/* Pantalla transición de dificultad */}
-      {transicionDif && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center animate-pop-in"
-          style={{ background: "rgba(0,0,0,0.85)" }}>
-          <div className="text-6xl mb-4">🎯</div>
-          <p className="text-zinc-400 text-sm mb-2">¡Subiste de categoría!</p>
-          <p className="text-4xl font-extrabold mb-2" style={{ color: transicionDif.color }}>
-            {transicionDif.emoji} {transicionDif.nombre}
+          <p className="text-5xl font-extrabold leading-none text-center"
+            style={{ color: "#fbbf24", textShadow: "0 0 24px rgba(251,191,36,0.7), 0 2px 0 #00000066" }}>
+            COMBO ×{combo}
           </p>
-          <p className="text-zinc-400 text-sm">Las preguntas serán más difíciles</p>
+          <p className="text-4xl mt-1 text-center">🔥</p>
         </div>
       )}
 
-      {/* Top bar */}
-      <div className="flex items-center gap-3 px-4 py-4 max-w-2xl mx-auto w-full">
-        <button onClick={() => { detenerVoz(); router.push("/niveles") }} className="text-zinc-400 hover:text-white text-xl">✕</button>
-        <div className="flex-1 rounded-full h-3" style={{ background: "var(--color-surface)" }}>
-          <div className="h-3 rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: "var(--color-primary)" }} />
-        </div>
-        <div className="flex items-center gap-3 text-sm font-bold">
-          <span style={{ color: dificultad === "facil" ? "#4ade80" : dificultad === "dificil" ? "#f87171" : "#fbbf24" }}>
-            {dificultad === "facil" ? "🟢" : dificultad === "dificil" ? "🔴" : "🟡"}
-          </span>
-          <span style={{ color: "var(--color-danger)" }}>❤️ {vidas}</span>
-          <span style={{ color: "var(--color-info)" }}>⚡ {xp}</span>
-        </div>
-      </div>
+      {/* ── Contenido principal ── */}
+      <div style={{ position: "relative", zIndex: 1, minHeight: "100vh", display: "flex", flexDirection: "column", padding: "16px 20px 0", maxWidth: 640, margin: "0 auto" }}>
 
-
-      {/* Temporizador */}
-      <div className="px-4 max-w-2xl mx-auto w-full mb-2">
-        <div className="flex items-center gap-2">
-          <div className="flex-1 rounded-full h-2" style={{ background: "var(--color-surface)" }}>
-            <div className="h-2 rounded-full transition-all duration-1000" style={{ width: `${tiempoPct}%`, background: tiempoColor }} />
-          </div>
-          <span className="text-sm font-extrabold w-6 text-right" style={{ color: tiempoColor }}>{tiempo}</span>
-        </div>
-      </div>
-
-      {/* Frase búho cuando hay combo o fallos (solo si hay algo que decir) */}
-      {(combo >= 3 || fallosSegidos >= 2) && (
-        <div className="px-4 max-w-2xl mx-auto w-full mb-2">
-          <div className="rounded-xl px-3 py-2 text-xs font-semibold text-center"
-            style={{ background: combo >= 3 ? "#0d2e14" : "#2e0d0d", color: combo >= 3 ? "var(--color-primary)" : "var(--color-danger)", border: `1px solid ${combo >= 3 ? "var(--color-primary)" : "var(--color-danger)"}40` }}>
-            {getFrase({ combo, falloVarias: fallosSegidos >= 2, vidas })}
-          </div>
-        </div>
-      )}
-
-      {/* Ejercicio */}
-      <div className="flex-1 flex flex-col justify-center px-4 pb-40 max-w-2xl mx-auto w-full">
-        <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "var(--color-primary)" }}>
-          Pregunta {indice + 1} de {lecciones.length}
-        </p>
-
-        <h2 className="text-2xl font-extrabold mb-4 leading-snug">{c.pregunta}</h2>
-
-        {/* Imagen si existe */}
-        {c.imagen_url && (
-          <div className="mb-4 rounded-2xl overflow-hidden">
-            {/* Dominio de imagen desconocido (viene de BD) → no se puede usar next/image */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={c.imagen_url} alt="Pregunta" className="w-full object-cover max-h-48" />
-          </div>
-        )}
-
-        {/* Audio si existe */}
-        {c.audio_url && (
-          <div className="mb-4">
-            <audio ref={audioRef} controls className="w-full rounded-xl" style={{ accentColor: "var(--color-primary)" }}>
-              <source src={c.audio_url} />
-            </audio>
-          </div>
-        )}
-
-        {leccion.tipo_ejercicio === "multiple_choice" && (
-          <div className="grid grid-cols-1 gap-3">
-            {opcionesMezcladas.map((op, i) => {
-              const seleccionada = respuesta === op
-              let borderColor = "var(--color-border)"
-              let bg = "var(--color-surface)"
-              if (estado === "correcto" && seleccionada) { borderColor = "var(--color-primary)"; bg = "#0d2e14" }
-              if (estado === "incorrecto" && seleccionada) { borderColor = "var(--color-danger)"; bg = "#2e0d0d" }
-              else if (seleccionada && !estado) { borderColor = "var(--color-info)"; bg = "#0d1e2e" }
-              return (
-                <button key={i} onClick={() => !estado && setRespuesta(op)} disabled={!!estado}
-                  className="rounded-2xl p-4 text-left font-semibold transition-all active:scale-95"
-                  style={{ background: bg, border: `2px solid ${borderColor}` }}>
-                  {op}
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {leccion.tipo_ejercicio === "verdadero_falso" && (
-          <div className="grid grid-cols-2 gap-4">
-            {["true", "false"].map((val) => {
-              const seleccionada = respuesta === val
-              let borderColor = "var(--color-border)"
-              let bg = "var(--color-surface)"
-              if (estado === "correcto" && seleccionada) { borderColor = "var(--color-primary)"; bg = "#0d2e14" }
-              if (estado === "incorrecto" && seleccionada) { borderColor = "var(--color-danger)"; bg = "#2e0d0d" }
-              else if (seleccionada && !estado) { borderColor = "var(--color-info)"; bg = "#0d1e2e" }
-              return (
-                <button key={val} onClick={() => !estado && setRespuesta(val)} disabled={!!estado}
-                  className="rounded-2xl py-6 font-extrabold text-xl transition-all active:scale-95"
-                  style={{ background: bg, border: `2px solid ${borderColor}` }}>
-                  {val === "true" ? "✅ Verdadero" : "❌ Falso"}
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {leccion.tipo_ejercicio === "completar_espacio" && (
-          <input type="text" value={respuesta} onChange={(e) => setRespuesta(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !estado && verificar()}
-            disabled={!!estado} placeholder="Escribe tu respuesta..."
-            className="w-full rounded-2xl px-5 py-4 text-lg font-semibold outline-none"
-            style={{ background: "var(--color-surface)", border: `2px solid ${estado === "correcto" ? "var(--color-primary)" : estado ? "var(--color-danger)" : "var(--color-border)"}`, color: "#fff" }}
-          />
-        )}
-      </div>
-
-      {/* Panel inferior */}
-      {!estado ? (
-        <div className="fixed bottom-0 left-0 right-0 px-4 py-4 max-w-2xl mx-auto w-full">
-          <button onClick={verificar} disabled={!respuesta}
-            className="w-full rounded-2xl py-4 font-extrabold text-lg text-white transition-all active:scale-95 disabled:opacity-40"
-            style={{ background: "var(--color-primary)", boxShadow: "0 4px 0 var(--color-primary-dark)" }}>
-            Verificar
-          </button>
-        </div>
-      ) : (
-        <div className="fixed bottom-0 left-0 right-0 px-4 py-5 slide-up"
-          style={{
-            background: estado === "correcto"
-              ? "rgba(13,46,20,0.97)"
-              : "rgba(46,13,13,0.97)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            borderTop: `2px solid ${estado === "correcto" ? "var(--color-primary)" : "var(--color-danger)"}`,
-            boxShadow: `0 -8px 32px ${estado === "correcto" ? "rgba(88,204,2,0.15)" : "rgba(255,75,75,0.15)"}`,
-          }}>
-          <div className="max-w-2xl mx-auto">
-            <div className="flex items-start gap-3 mb-3">
-              <span className="text-2xl mt-0.5">{estado === "correcto" ? "✅" : estado === "tiempo" ? "⏱️" : "❌"}</span>
-              <div className="flex-1">
-                <p className="font-extrabold text-lg">
-                  {estado === "correcto" ? "¡Correcto! +10 XP" : estado === "tiempo" ? "¡Tiempo agotado!" : "Incorrecto"}
-                </p>
-                {estado === "correcto" ? (
-                  <p className="text-sm text-zinc-400 mt-0.5">¡Sigue así!</p>
-                ) : (
-                  <div className="mt-1 flex flex-col gap-1">
-                    <p className="text-sm font-bold" style={{ color: "var(--color-primary)" }}>
-                      Respuesta correcta: {mostrarRespuesta(String(c.respuesta_correcta))}
-                    </p>
-                    {c.explicacion_error && (
-                      <p className="text-sm leading-relaxed" style={{ color: "#d1d5db" }}>
-                        💡 {c.explicacion_error}
-                      </p>
-                    )}
-                  </div>
-                )}
+        {/* ── TOP BAR ── */}
+        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, paddingBottom: 14 }}>
+          {/* Izquierda: salir + chip nivel + meta */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button onClick={() => { detenerVoz(); router.push("/niveles") }}
+              style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#a4b1c6", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              ✕
+            </button>
+            <div style={{ width: 42, height: 42, borderRadius: 14, background: "linear-gradient(135deg,#1e3a8a 0%,#0c4a6e 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#c7d2fe", border: "1px solid rgba(167,139,250,0.3)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 14px -4px rgba(99,102,241,0.4)", flexShrink: 0 }}>
+              N{nivel?.orden ?? "?"}
+            </div>
+            <div style={{ lineHeight: 1.1 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: "-0.01em" }}>{nivel?.titulo}</div>
+              <div style={{ fontSize: 11.5, color: "#6b7a93", marginTop: 3 }}>
+                {dificultad === "facil" ? "🟢 Fácil" : dificultad === "normal" ? "🟡 Normal" : "🔴 Difícil"}
               </div>
             </div>
-            <button onClick={siguiente}
-              className="w-full rounded-2xl py-4 font-extrabold text-lg text-white transition-all active:scale-95"
-              style={{ background: estado === "correcto" ? "var(--color-primary)" : "var(--color-danger)", boxShadow: `0 4px 0 ${estado === "correcto" ? "var(--color-primary-dark)" : "#991b1b"}` }}>
-              {indice + 1 >= lecciones.length ? "Ver resultados 📊" : "Siguiente →"}
-            </button>
+          </div>
+
+          {/* Derecha: XP + corazones */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px 7px 9px", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.22)", borderRadius: 999 }}>
+              <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 2L14.5 9L22 9.5L16 14.5L18 22L12 17.8L6 22L8 14.5L2 9.5L9.5 9Z" fill="#fbbf24" stroke="#f59e0b" strokeWidth="0.8" strokeLinejoin="round"/></svg>
+              <span style={{ fontSize: 13.5, color: "#fbbf24", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{xp.toLocaleString()}</span>
+              <span style={{ fontSize: 10.5, color: "rgba(251,191,36,0.7)", fontWeight: 600 }}>XP</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "5px 9px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: 999 }}>
+              {[0,1,2,3,4].map(i => <Heart key={i} filled={i < vidas} />)}
+            </div>
+          </div>
+        </header>
+
+        {/* ── BARRA DE PROGRESO ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18 }}>
+          <div style={{ flex: 1, height: 12, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", position: "relative" }}>
+            <div style={{ height: "100%", width: `${pct}%`, background: "linear-gradient(90deg,#16a34a 0%,#22c55e 50%,#4ade80 100%)", borderRadius: 999, boxShadow: "0 0 12px rgba(34,197,94,0.5), inset 0 1px 0 rgba(255,255,255,0.3)", transition: "width 0.4s ease", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.45) 50%,transparent 100%)", animation: "qs-shine 2.6s infinite linear" }} />
+            </div>
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#a4b1c6", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+            <span style={{ color: "#4ade80" }}>{indice+1}</span>/{lecciones.length}
+          </span>
+          {combo >= 2 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "7px 12px 7px 10px", background: "linear-gradient(135deg,rgba(251,191,36,0.22),rgba(249,115,22,0.18))", border: "1px solid rgba(251,191,36,0.45)", borderRadius: 999, fontWeight: 800, color: "#fde68a", boxShadow: "0 0 16px rgba(251,191,36,0.25)", animation: "qs-combo-pulse 1.8s infinite ease-in-out" }}>
+              <span style={{ fontSize: 14 }}>🔥</span>
+              <span style={{ fontSize: 11, opacity: 0.7 }}>×</span>
+              <span style={{ fontSize: 14, fontVariantNumeric: "tabular-nums" }}>{combo}</span>
+            </div>
+          )}
+        </div>
+
+        {/* ── PREGUNTA ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
+          {/* Tag */}
+          <span style={{ alignSelf: "flex-start", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#06b6d4", padding: "5px 10px", background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.25)", borderRadius: 6 }}>
+            {leccion.tipo_ejercicio === "verdadero_falso" ? "Pregunta · V/F"
+              : leccion.tipo_ejercicio === "completar_espacio" ? "Pregunta · Completar"
+              : "Pregunta · Opción múltiple"}
+          </span>
+
+          {/* Tarjeta blanca */}
+          <div className={feedbackState === "incorrect" ? "qs-option-shake" : ""} style={{ position: "relative", background: "#f8fafc", borderRadius: 22, padding: "22px 22px 18px", boxShadow: "0 24px 60px -20px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)", overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: "linear-gradient(90deg,#22c55e 0%,#06b6d4 50%,#a78bfa 100%)" }} />
+            <p style={{ fontSize: 19, lineHeight: 1.35, fontWeight: 700, letterSpacing: "-0.015em", color: "#0b1326", margin: 0 }}>
+              {c.pregunta}
+            </p>
+            {c.imagen_url && (
+              <div style={{ marginTop: 14, borderRadius: 12, overflow: "hidden" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={c.imagen_url} alt="" style={{ width: "100%", maxHeight: 180, objectFit: "cover" }} />
+              </div>
+            )}
+            {c.audio_url && (
+              <div style={{ marginTop: 12 }}>
+                <audio ref={audioRef} controls style={{ width: "100%", borderRadius: 8 }}>
+                  <source src={c.audio_url} />
+                </audio>
+              </div>
+            )}
+            <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 7, height: 7, borderRadius: 999, background: "#fbbf24", boxShadow: "0 0 6px rgba(251,191,36,0.6)", flexShrink: 0 }} />
+              <span style={{ fontSize: 11.5, fontWeight: 600, color: "#475569" }}>Pista disponible · −10 XP</span>
+            </div>
+          </div>
+
+          {/* Timer */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "#a4b1c6" }}>⏱ Tiempo</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: tiempoColor, fontVariantNumeric: "tabular-nums" }}>{tiempo}s</span>
+            </div>
+            <div style={{ height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 999, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ height: "100%", width: `${tiempoPct}%`, borderRadius: 999, background: tiempo > 15 ? "linear-gradient(90deg,#22c55e,#06b6d4)" : tiempo > 7 ? "linear-gradient(90deg,#fbbf24,#f59e0b)" : "linear-gradient(90deg,#ef4444,#f97316)", transition: "width 1s linear, background 0.3s", boxShadow: `0 0 8px ${tiempoColor}` }} />
+            </div>
           </div>
         </div>
-      )}
+
+        {/* ── OPCIONES ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 200 }}>
+
+          {/* Multiple choice */}
+          {leccion.tipo_ejercicio === "multiple_choice" && opcionesMezcladas.map((op, i) => {
+            const s = getOptionStyle(op, feedbackState, respuesta, c.respuesta_correcta)
+            const isCorrectOp = op === c.respuesta_correcta
+            const arrowIcon = feedbackState !== "idle" && isCorrectOp ? "✓"
+              : feedbackState !== "idle" && respuesta === op && !isCorrectOp ? "✕" : "→"
+            const arrowBg = feedbackState !== "idle" && isCorrectOp ? "#22c55e"
+              : feedbackState !== "idle" && respuesta === op && !isCorrectOp ? "#ef4444" : "transparent"
+            const arrowCol = arrowBg !== "transparent" ? (isCorrectOp ? "#042713" : "#2a0707") : "#6b7a93"
+            return (
+              <button key={i}
+                onClick={() => feedbackState === "idle" && setRespuesta(op)}
+                disabled={feedbackState !== "idle"}
+                style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", background: s.bg, border: `1.5px ${s.borderStyle||"solid"} ${s.border}`, borderRadius: 18, color: s.color || "#f1f5fb", cursor: feedbackState === "idle" ? "pointer" : "default", textAlign: "left", fontFamily: "inherit", fontSize: 14.5, fontWeight: 600, letterSpacing: "-0.005em", minHeight: 60, opacity: s.opacity ?? 1, boxShadow: s.shadow, transition: "all 0.18s ease", animation: s.animation || "none" }}>
+                <span style={{ width: 34, height: 34, borderRadius: 10, background: s.letterBg, border: "1px solid rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: s.letterColor, flexShrink: 0 }}>
+                  {LETTERS[i]}
+                </span>
+                <span style={{ flex: 1 }}>{mostrarRespuesta(op)}</span>
+                <span style={{ width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: arrowCol, background: arrowBg, opacity: (feedbackState !== "idle" && (isCorrectOp || respuesta === op)) ? 1 : 0.45, transition: "all 0.2s" }}>
+                  {arrowIcon}
+                </span>
+              </button>
+            )
+          })}
+
+          {/* Verdadero / Falso */}
+          {leccion.tipo_ejercicio === "verdadero_falso" && ["true","false"].map((val, i) => {
+            const s = getOptionStyle(val, feedbackState, respuesta, String(c.respuesta_correcta))
+            const isCorrectOp = val === String(c.respuesta_correcta)
+            const arrowIcon = feedbackState !== "idle" && isCorrectOp ? "✓"
+              : feedbackState !== "idle" && respuesta === val && !isCorrectOp ? "✕" : "→"
+            const arrowBg = feedbackState !== "idle" && isCorrectOp ? "#22c55e"
+              : feedbackState !== "idle" && respuesta === val && !isCorrectOp ? "#ef4444" : "transparent"
+            const arrowCol = arrowBg !== "transparent" ? (isCorrectOp ? "#042713" : "#2a0707") : "#6b7a93"
+            return (
+              <button key={val}
+                onClick={() => feedbackState === "idle" && setRespuesta(val)}
+                disabled={feedbackState !== "idle"}
+                style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px", background: s.bg, border: `1.5px ${s.borderStyle||"solid"} ${s.border}`, borderRadius: 18, color: s.color || "#f1f5fb", cursor: feedbackState === "idle" ? "pointer" : "default", textAlign: "left", fontFamily: "inherit", fontSize: 14.5, fontWeight: 600, minHeight: 60, opacity: s.opacity ?? 1, boxShadow: s.shadow, transition: "all 0.18s ease" }}>
+                <span style={{ width: 34, height: 34, borderRadius: 10, background: s.letterBg, border: "1px solid rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 15, color: s.letterColor, flexShrink: 0 }}>
+                  {val === "true" ? "V" : "F"}
+                </span>
+                <span style={{ flex: 1 }}>{val === "true" ? "Verdadero" : "Falso"}</span>
+                <span style={{ width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: arrowCol, background: arrowBg, opacity: (feedbackState !== "idle" && (isCorrectOp || respuesta === val)) ? 1 : 0.45, transition: "all 0.2s" }}>
+                  {arrowIcon}
+                </span>
+              </button>
+            )
+          })}
+
+          {/* Completar espacio */}
+          {leccion.tipo_ejercicio === "completar_espacio" && (
+            <input type="text" value={respuesta}
+              onChange={e => setRespuesta(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && !estado && verificar()}
+              disabled={!!estado}
+              placeholder="Escribe tu respuesta..."
+              style={{ width: "100%", borderRadius: 18, padding: "16px 20px", fontSize: 15, fontWeight: 600, background: "#14213d", border: `1.5px solid ${estado === "correcto" ? "#22c55e" : estado ? "#ef4444" : "rgba(255,255,255,0.14)"}`, color: "#f1f5fb", outline: "none", fontFamily: "inherit", boxShadow: estado === "correcto" ? "0 0 20px rgba(34,197,94,0.35)" : estado ? "0 0 16px rgba(239,68,68,0.3)" : "0 4px 0 rgba(0,0,0,0.28)" }}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* ── FOOTER FIJO: mascota + burbuja + botón ── */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 20,
+        background: feedbackState === "correct" ? "rgba(4,18,10,0.97)" : feedbackState === "incorrect" ? "rgba(18,4,4,0.97)" : "rgba(6,11,24,0.96)",
+        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+        borderTop: feedbackState === "correct" ? "1px solid rgba(34,197,94,0.35)" : feedbackState === "incorrect" ? "1px solid rgba(239,68,68,0.35)" : "1px solid rgba(255,255,255,0.07)",
+        boxShadow: feedbackState === "correct" ? "0 -8px 32px rgba(34,197,94,0.14)" : feedbackState === "incorrect" ? "0 -8px 32px rgba(239,68,68,0.14)" : "none",
+        padding: "14px 20px 24px",
+      }}>
+        <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 }}>
+
+          {/* Fila mascota + burbuja */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Mascota estado={mascotaEstado} size={76} />
+            <div style={{ position: "relative", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.13)", padding: "10px 14px", borderRadius: "14px 14px 14px 4px", fontSize: 12.5, lineHeight: 1.4, color: "#a4b1c6", maxWidth: 260, backdropFilter: "blur(8px)" }}>
+              <b style={{ color: "#f1f5fb" }}>{bubbleMsg.bold}</b>
+              <span>{bubbleMsg.rest}</span>
+              {feedbackState === "incorrect" && c.explicacion_error && (
+                <p style={{ marginTop: 6, fontSize: 11.5, color: "#94a3b8", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 6 }}>
+                  💡 {c.explicacion_error}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Botón de acción */}
+          {feedbackState === "idle" ? (
+            <button onClick={verificar} disabled={!respuesta}
+              style={{
+                width: "100%", padding: "14px", borderRadius: 14,
+                fontFamily: "inherit", fontSize: 15, fontWeight: 800,
+                background: respuesta ? "#22c55e" : "rgba(255,255,255,0.05)",
+                color: respuesta ? "#042713" : "#6b7a93",
+                border: `1.5px solid ${respuesta ? "#22c55e" : "rgba(255,255,255,0.09)"}`,
+                cursor: respuesta ? "pointer" : "default",
+                boxShadow: respuesta ? "0 4px 0 #14532d" : "none",
+                transition: "all 0.2s ease",
+              }}>
+              Verificar
+            </button>
+          ) : (
+            <button onClick={siguiente}
+              style={{
+                width: "100%", padding: "14px", borderRadius: 14,
+                fontFamily: "inherit", fontSize: 15, fontWeight: 800,
+                background: feedbackState === "correct" ? "#22c55e" : "#ef4444",
+                color: feedbackState === "correct" ? "#042713" : "#fff",
+                border: "none", cursor: "pointer",
+                boxShadow: feedbackState === "correct" ? "0 4px 0 #14532d" : "0 4px 0 #7f1d1d",
+                transition: "all 0.2s ease",
+              }}>
+              {indice + 1 >= lecciones.length ? "Ver resultados 📊" : "Siguiente →"}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
