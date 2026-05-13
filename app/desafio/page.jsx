@@ -25,15 +25,15 @@ export default function DesafioPage() {
   const [preguntas, setPreguntas] = useState([])
   const [indice, setIndice] = useState(0)
   const [tiempo, setTiempo] = useState(TIEMPO_PREGUNTA)
-  const [respondida, setRespondida] = useState(null)  // null | { opcion, correcto, timeout? }
-  const [resultados, setResultados] = useState([])    // booleans
-  const [fase, setFase] = useState("juego")           // "juego" | "resultados"
+  const [respondida, setRespondida] = useState(null)
+  const [resultados, setResultados] = useState([])
+  const [fase, setFase] = useState("juego")
   const [esRecord, setEsRecord] = useState(false)
   const [xpGanado, setXpGanado] = useState(0)
   const [particleKey, setParticleKey] = useState(0)
 
   const userRef       = useRef(null)
-  const resultadosRef = useRef([])   // ref para evitar stale closures en timers
+  const resultadosRef = useRef([])
   const preguntasRef  = useRef([])
   const avanzandoRef  = useRef(false)
 
@@ -43,7 +43,6 @@ export default function DesafioPage() {
       if (!user) { router.push("/login"); return }
       userRef.current = user
 
-      // Determinar qué niveles tiene desbloqueados el usuario
       const [{ data: nivelesData }, { data: progresoData }] = await Promise.all([
         supabase.from("niveles").select("id").order("orden", { ascending: true }),
         supabase.from("progreso_nivel").select("nivel_id, dificultad").eq("user_id", user.id),
@@ -72,7 +71,6 @@ export default function DesafioPage() {
 
       if (!todas?.length) { setLoading(false); return }
 
-      // Agrupar por nivel, tomar 2 por nivel, shuffle global, recortar a 10
       const porNivel = {}
       todas.forEach(q => {
         if (!porNivel[q.nivel_id]) porNivel[q.nivel_id] = []
@@ -92,7 +90,6 @@ export default function DesafioPage() {
     init()
   }, [router])
 
-  // Timer — se reinicia cuando cambia indice o se limpia cuando hay respuesta
   useEffect(() => {
     if (fase !== "juego" || loading || !preguntas.length || respondida !== null) return
 
@@ -109,15 +106,8 @@ export default function DesafioPage() {
     return () => { stopped = true; clearInterval(interval) }
   }, [indice, respondida, fase, loading, preguntas.length])
 
-  // Detectar tiempo agotado
   useEffect(() => {
-    if (
-      tiempo <= 0 &&
-      respondida === null &&
-      fase === "juego" &&
-      preguntas.length > 0 &&
-      !avanzandoRef.current
-    ) {
+    if (tiempo <= 0 && respondida === null && fase === "juego" && preguntas.length > 0 && !avanzandoRef.current) {
       avanzandoRef.current = true
       sound.incorrect()
       setRespondida({ opcion: null, correcto: false, timeout: true })
@@ -156,12 +146,9 @@ export default function DesafioPage() {
     setXpGanado(xp)
 
     if (userRef.current && xp > 0) {
-      const { data: p } = await supabase
-        .from("users").select("xp_total").eq("id", userRef.current.id).single()
+      const { data: p } = await supabase.from("users").select("xp_total").eq("id", userRef.current.id).single()
       if (p) {
-        await supabase.from("users")
-          .update({ xp_total: (p.xp_total ?? 0) + xp })
-          .eq("id", userRef.current.id)
+        await supabase.from("users").update({ xp_total: (p.xp_total ?? 0) + xp }).eq("id", userRef.current.id)
       }
     }
 
@@ -175,21 +162,18 @@ export default function DesafioPage() {
     setFase("resultados")
   }
 
-  // ── Loading ──────────────────────────────────
   if (loading) return <LoadingConti texto="Preparando desafío..." />
 
   if (!preguntas.length) {
     return (
-      <div className="min-h-screen pb-20 md:pt-20" style={{ background: "transparent" }}>
+      <div className="qs">
+        <div className="qs-bg-orb qs-bg-orb-1" />
+        <div className="qs-bg-orb qs-bg-orb-2" />
         <Navbar />
-        <div className="max-w-lg mx-auto px-4 py-20 text-center">
-          <p className="text-5xl mb-4">📭</p>
-          <p className="font-bold">Sin preguntas disponibles todavía</p>
-          <button
-            onClick={() => router.push("/niveles")}
-            className="mt-6 px-6 py-3 rounded-xl font-bold text-sm"
-            style={{ background: "var(--color-primary)", color: "#000" }}
-          >
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, minHeight: "80vh", textAlign: "center", padding: "0 20px" }}>
+          <p style={{ fontSize: 48 }}>📭</p>
+          <p style={{ fontWeight: 700 }}>Sin preguntas disponibles todavía</p>
+          <button onClick={() => router.push("/niveles")} style={{ padding: "10px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, background: "var(--accent-green)", color: "#000", border: "none", cursor: "pointer" }}>
             Volver
           </button>
         </div>
@@ -197,7 +181,6 @@ export default function DesafioPage() {
     )
   }
 
-  // ── Pantalla de resultados ───────────────────
   if (fase === "resultados") {
     const correctas = resultados.filter(Boolean).length
     const total     = preguntas.length
@@ -205,157 +188,124 @@ export default function DesafioPage() {
     const bestActual = parseInt(localStorage.getItem(BEST_KEY) || "0", 10)
 
     return (
-      <div className="min-h-screen pb-20 md:pt-20" style={{ background: "transparent" }}>
-        <Navbar />
+      <div className="qs scr-resultados">
+        <div className="qs-bg-orb qs-bg-orb-1" />
+        <div className="qs-bg-orb qs-bg-orb-2" />
         {esRecord && <Particles key={particleKey} preset="rankUp" />}
 
-        <div className="max-w-lg mx-auto px-4 py-8">
+        <div className="scr-scroll">
+          <div className="res-hero">
+            <div className="res-confetti">
+              <span style={{ left: "10%", animationDelay: "0s" }}>⚡</span>
+              <span style={{ left: "35%", animationDelay: "0.2s" }}>✦</span>
+              <span style={{ left: "65%", animationDelay: "0.1s" }}>⚡</span>
+              <span style={{ left: "85%", animationDelay: "0.4s" }}>✦</span>
+            </div>
+            <div className="res-title">{pct >= 80 ? "🏆 ¡Dominado!" : pct >= 60 ? "⭐ ¡Bien hecho!" : "📚 Sigue practicando"}</div>
+            <div className="res-sub">Modo Desafío · {pct}% de acierto</div>
 
-          {/* Tarjeta principal */}
-          <div
-            className="rounded-2xl p-7 text-center mb-5"
-            style={{
-              background: "var(--color-surface)",
-              border: esRecord ? "1.5px solid #ffd700" : "1px solid var(--color-border)",
-              boxShadow: esRecord ? "0 0 28px rgba(255,215,0,0.12)" : "none",
-            }}
-          >
-            <div className="text-6xl mb-3">{pct >= 80 ? "🏆" : pct >= 60 ? "⭐" : "📚"}</div>
-            <h1 className="text-5xl font-extrabold mb-1" style={{ color: pct >= 80 ? "#ffd700" : "white" }}>
-              {correctas}<span className="text-zinc-500 text-2xl font-bold">/{total}</span>
-            </h1>
-            <p className="text-zinc-400 text-sm mb-4">{pct}% de acierto</p>
-
-            {esRecord && (
-              <div
-                className="mb-5 px-4 py-2 rounded-xl inline-block font-bold text-sm"
-                style={{ background: "rgba(255,215,0,0.12)", color: "#ffd700", border: "1px solid rgba(255,215,0,0.3)" }}
-              >
-                🥇 ¡Nuevo récord personal!
+            <div className="res-score-row">
+              <div className="res-score-card">
+                <div className="res-score-big">{correctas}<span>/{total}</span></div>
+                <div className="res-score-lbl">Correctas</div>
               </div>
-            )}
-
-            <div className="flex justify-center gap-10 mt-2">
-              <div>
-                <p className="text-xs text-zinc-500 mb-1">XP ganado</p>
-                <p className="text-xl font-extrabold" style={{ color: "var(--color-info)" }}>+{xpGanado}</p>
+              <div className="res-score-card xp">
+                <div className="res-score-big res-xp-big">
+                  <span className="res-xp-plus">+</span>{xpGanado}
+                </div>
+                <div className="res-score-lbl">XP ganado</div>
               </div>
-              <div>
-                <p className="text-xs text-zinc-500 mb-1">Mejor puntaje</p>
-                <p className="text-xl font-extrabold" style={{ color: "#ffd700" }}>{bestActual}/{total}</p>
+              <div className="res-score-card combo">
+                <div className="res-score-big">{bestActual}<span>/{total}</span></div>
+                <div className="res-score-lbl">Récord</div>
               </div>
             </div>
+
+            {esRecord && (
+              <div className="res-progression">
+                <span className="res-prog-ico">🥇</span>
+                <span><b>¡Nuevo récord personal!</b></span>
+              </div>
+            )}
           </div>
 
-          {/* Detalle por pregunta */}
-          <div className="flex flex-col gap-2 mb-6">
+          {/* Detalle */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "0 2px" }}>
             {resultados.map((ok, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 rounded-xl px-4 py-2.5"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--color-border)" }}
-              >
-                <span className="text-base flex-shrink-0">{ok ? "✅" : "❌"}</span>
-                <p className="text-xs text-zinc-400 flex-1 line-clamp-1">{preguntas[i]?.pregunta}</p>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 12, background: ok ? "rgba(34,197,94,0.06)" : "rgba(239,68,68,0.06)", border: `1px solid ${ok ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}` }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>{ok ? "✅" : "❌"}</span>
+                <p style={{ fontSize: 12.5, color: "var(--text-2)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{preguntas[i]?.pregunta}</p>
               </div>
             ))}
           </div>
 
-          <div className="flex gap-3">
-            <button
-              onClick={() => window.location.reload()}
-              className="flex-1 py-3 rounded-xl font-extrabold text-sm transition-all hover:brightness-110 active:scale-95"
-              style={{ background: "var(--color-primary)", color: "#000" }}
-            >
-              🔄 Repetir
-            </button>
-            <button
-              onClick={() => router.push("/niveles")}
-              className="flex-1 py-3 rounded-xl font-extrabold text-sm transition-all active:scale-95"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--color-border)", color: "white" }}
-            >
-              ← Niveles
-            </button>
+          <div className="res-actions">
+            <button className="res-btn res-btn-secondary" onClick={() => window.location.reload()}>Repetir</button>
+            <button className="res-btn res-btn-primary" onClick={() => router.push("/niveles")}>← Niveles</button>
           </div>
+
+          <div className="dash-bottom-spacer" />
         </div>
+
+        <Navbar />
       </div>
     )
   }
 
-  // ── Fase juego ───────────────────────────────
+  // Game phase
   const pregunta = preguntas[indice]
   const opciones  = pregunta.tipo === "verdadero_falso"
     ? ["true", "false"]
-    : (Array.isArray(pregunta.opciones)
-        ? pregunta.opciones
-        : JSON.parse(pregunta.opciones || "[]"))
+    : (Array.isArray(pregunta.opciones) ? pregunta.opciones : JSON.parse(pregunta.opciones || "[]"))
 
   const pctTimer = (tiempo / TIEMPO_PREGUNTA) * 100
-  const barColor  = tiempo > 8 ? "#58cc02" : tiempo > 4 ? "#ffc800" : "#ff4b4b"
+  const barColor  = tiempo > 8 ? "#22c55e" : tiempo > 4 ? "#fbbf24" : "#ef4444"
 
   return (
-    <div className="min-h-screen pb-20 md:pt-20" style={{ background: "transparent" }}>
-      <Navbar />
+    <div className="qs">
+      <div className="qs-bg-orb qs-bg-orb-1" style={{ "--orb-color": barColor }} />
+      <div className="qs-bg-orb qs-bg-orb-2" />
 
-      <div className="max-w-lg mx-auto px-4 py-6">
+      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", minHeight: "100vh", padding: "16px 20px 0", maxWidth: 640, margin: "0 auto" }}>
 
-        {/* Header con barra de tiempo */}
-        <div className="flex items-center gap-3 mb-5">
+        {/* Header */}
+        <header style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 14 }}>
           <button
             onClick={() => router.push("/niveles")}
-            className="text-zinc-400 hover:text-white text-xl flex-shrink-0 transition-colors"
+            style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--text-2)", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
           >
             ←
           </button>
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">⚡ Modo Desafío</span>
-              <span className="text-sm font-extrabold tabular-nums" style={{ color: barColor }}>
-                {Math.ceil(tiempo)}s
-              </span>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--accent-gold)" }}>⚡ Modo Desafío</span>
+              <span style={{ fontSize: 13, fontWeight: 800, fontVariantNumeric: "tabular-nums", color: barColor }}>{Math.ceil(tiempo)}s</span>
             </div>
-            <div className="w-full rounded-full h-3" style={{ background: "#0d1a20" }}>
-              <div
-                className="h-3 rounded-full"
-                style={{
-                  width: `${pctTimer}%`,
-                  background: barColor,
-                  boxShadow: `0 0 10px ${barColor}66`,
-                  transition: "width 0.1s linear, background 0.3s ease",
-                }}
-              />
+            <div style={{ height: 10, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ height: "100%", width: `${pctTimer}%`, background: barColor, boxShadow: `0 0 10px ${barColor}66`, transition: "width 0.1s linear, background 0.3s ease", borderRadius: 999 }} />
             </div>
           </div>
-          <span className="text-sm font-extrabold text-zinc-300 flex-shrink-0 tabular-nums">
+          <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-2)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
             {indice + 1}/{preguntas.length}
           </span>
+        </header>
+
+        {/* Question card */}
+        <div style={{ position: "relative", background: "#f8fafc", borderRadius: 22, padding: "22px 22px 18px", boxShadow: "0 24px 60px -20px rgba(0,0,0,0.55)", overflow: "hidden", marginBottom: 16 }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: `linear-gradient(90deg, ${barColor}, #06b6d4)` }} />
+          <p style={{ fontSize: 18, lineHeight: 1.35, fontWeight: 700, color: "#0b1326", margin: 0 }}>{pregunta.pregunta}</p>
         </div>
 
-        {/* Pregunta */}
-        <div
-          className="rounded-2xl p-6 mb-5"
-          style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
-        >
-          <p className="text-base font-semibold leading-snug">{pregunta.pregunta}</p>
-        </div>
-
-        {/* Opciones */}
-        <div className="flex flex-col gap-3">
+        {/* Options */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {opciones.map(opcion => {
-            let borderColor = "var(--color-border)"
-            let bgColor     = "rgba(255,255,255,0.02)"
-            let textColor   = "white"
+            let borderColor = "rgba(255,255,255,0.14)"
+            let bgColor     = "#14213d"
+            let textColor   = "#f1f5fb"
 
             if (respondida) {
-              if (opcion === pregunta.respuesta_correcta) {
-                borderColor = "var(--color-primary)"
-                bgColor     = "rgba(88,204,2,0.12)"
-                textColor   = "var(--color-primary)"
-              } else if (opcion === respondida.opcion && !respondida.correcto) {
-                borderColor = "var(--color-danger)"
-                bgColor     = "rgba(239,68,68,0.08)"
-                textColor   = "var(--color-danger)"
-              }
+              if (opcion === pregunta.respuesta_correcta) { borderColor = "#22c55e"; bgColor = "rgba(34,197,94,0.12)"; textColor = "#86efac" }
+              else if (opcion === respondida.opcion && !respondida.correcto) { borderColor = "#ef4444"; bgColor = "rgba(239,68,68,0.1)"; textColor = "#fca5a5" }
             }
 
             return (
@@ -363,13 +313,7 @@ export default function DesafioPage() {
                 key={opcion}
                 onClick={() => responder(opcion)}
                 disabled={!!respondida}
-                className="text-left rounded-xl px-4 py-3.5 text-sm font-medium transition-all duration-200 hover:brightness-110 active:scale-[0.99]"
-                style={{
-                  background: bgColor,
-                  border: `1.5px solid ${borderColor}`,
-                  color: textColor,
-                  cursor: respondida ? "default" : "pointer",
-                }}
+                style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: bgColor, border: `1.5px solid ${borderColor}`, borderRadius: 16, color: textColor, cursor: respondida ? "default" : "pointer", textAlign: "left", fontFamily: "inherit", fontSize: 14.5, fontWeight: 600, transition: "all 0.18s", boxShadow: "0 3px 0 rgba(0,0,0,0.25)" }}
               >
                 {mostrarOpcion(opcion)}
               </button>
@@ -378,11 +322,8 @@ export default function DesafioPage() {
         </div>
 
         {respondida?.timeout && (
-          <p className="text-center text-xs font-bold mt-4" style={{ color: "var(--color-danger)" }}>
-            ⏱ ¡Tiempo agotado!
-          </p>
+          <p style={{ textAlign: "center", fontSize: 12, fontWeight: 800, marginTop: 16, color: "#ef4444" }}>⏱ ¡Tiempo agotado!</p>
         )}
-
       </div>
     </div>
   )

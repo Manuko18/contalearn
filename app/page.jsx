@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { supabase } from "../lib/supabaseClient"
 import Navbar from "../components/Navbar"
 import Mascota from "../components/Mascota"
-import PageTransition from "../components/PageTransition"
 import LoadingConti from "../components/LoadingConti"
 import AchievementToast from "../components/AchievementToast"
 import { getFrase, getDiasDesdeUltimaLeccion } from "../lib/frases"
@@ -17,15 +16,12 @@ import Particles from "../components/Particles"
 
 // ── Pool de misiones disponibles ──
 const MISIONES_POOL = [
-  // Fáciles (+10 XP)
   { tipo: "responder_preguntas_5",  descripcion: "Responde 5 preguntas hoy",                    icono: "📝", meta: 5,   xp: 10 },
   { tipo: "racha_combo_3",          descripcion: "Consigue un combo de 3 correctas seguidas",   icono: "🔥", meta: 3,   xp: 10 },
-  // Normales (+15 XP)
   { tipo: "responder_preguntas",    descripcion: "Responde 10 preguntas hoy",                   icono: "📝", meta: 10,  xp: 15 },
   { tipo: "completar_subniveles",   descripcion: "Completa 2 sub-niveles hoy",                  icono: "🏆", meta: 2,   xp: 15 },
   { tipo: "sin_perder_vida",        descripcion: "Termina una sesión sin perder ninguna vida",  icono: "❤️", meta: 1,   xp: 15 },
   { tipo: "xp_ganar",               descripcion: "Gana 50 XP jugando hoy",                     icono: "⚡", meta: 50,  xp: 15 },
-  // Difíciles (+25 XP)
   { tipo: "correctas_seguidas",     descripcion: "Consigue 5 respuestas correctas seguidas",    icono: "🎯", meta: 5,   xp: 25 },
   { tipo: "xp_ganar_100",           descripcion: "Gana 100 XP en un día",                      icono: "💎", meta: 100, xp: 25 },
   { tipo: "completar_subniveles_3", descripcion: "Completa 3 sub-niveles hoy",                  icono: "🏅", meta: 3,   xp: 25 },
@@ -54,8 +50,8 @@ export default function Home() {
   const [misiones, setMisiones] = useState([])
   const [achQueue, setAchQueue]     = useState([])
   const [curAch, setCurAch]         = useState(null)
-  const [bonusBanner, setBonusBanner] = useState(null)  // { msg, xp }
-  const [bonusKey, setBonusKey]       = useState(0)     // key para Particles
+  const [bonusBanner, setBonusBanner] = useState(null)
+  const [bonusKey, setBonusKey]       = useState(0)
   const [misionSemanal, setMisionSemanal] = useState(null)
   const [tieneErrores, setTieneErrores] = useState(false)
   const [nivelesRuta, setNivelesRuta] = useState([])
@@ -84,10 +80,6 @@ export default function Home() {
       return
     }
 
-    // Calcular domingo de esta semana
-    const domingo = new Date(lunes)
-    domingo.setDate(domingo.getDate() + 6)
-
     const { data: nueva } = await supabase
       .from("misiones_diarias")
       .insert([{
@@ -106,7 +98,6 @@ export default function Home() {
     setMisionSemanal(nueva ?? null)
   }
 
-  // ── cargarOGenerarMisiones declarada ANTES del useEffect que la llama ──
   async function cargarOGenerarMisiones(userId) {
     const hoy = new Date().toISOString().split("T")[0]
     const { data: existentes } = await supabase
@@ -167,13 +158,11 @@ export default function Home() {
         p = nuevo
       }
 
-      // Recargar vidas: 1 vida cada 30 minutos si vidas < 5
       if (p && p.vidas < 5 && p.ultima_vida_recargada) {
         const ahora = new Date()
         const ultima = new Date(p.ultima_vida_recargada)
         const minutos = Math.floor((ahora - ultima) / 60000)
         const vidasARecuperar = Math.floor(minutos / 30)
-
         if (vidasARecuperar > 0) {
           const nuevasVidas = Math.min(5, p.vidas + vidasARecuperar)
           await supabase.from("users").update({
@@ -182,19 +171,16 @@ export default function Home() {
           }).eq("id", user.id)
           p = { ...p, vidas: nuevasVidas }
         } else {
-          const minutosRestantes = 30 - (minutos % 30)
-          setTiempoVida(minutosRestantes)
+          setTiempoVida(30 - (minutos % 30))
         }
       }
 
-      // Cargar niveles para la ruta de aprendizaje
       const { data: nivelesData } = await supabase
         .from("niveles")
         .select("id, titulo, descripcion, emoji, orden")
         .order("orden", { ascending: true })
       setNivelesRuta(nivelesData || [])
 
-      // Verificar si hay errores pendientes de repasar
       const { data: erroresCheck } = await supabase
         .from("user_mistakes")
         .select("id")
@@ -206,7 +192,6 @@ export default function Home() {
       await cargarOGenerarMisiones(user.id)
       await cargarOGenerarMisionSemanal(user.id)
 
-      // Sonido de bienvenida — una vez por día
       const hoy = new Date().toISOString().split("T")[0]
       const keyLogin = `cl_login_${hoy}`
       if (!localStorage.getItem(keyLogin)) {
@@ -214,7 +199,6 @@ export default function Home() {
         setTimeout(() => sound.dailyLogin(), 600)
       }
 
-      // Bonus de regreso: +20 XP si lleva ≥ 2 días sin entrar
       const keyRegreso = `cl_regreso_${hoy}`
       if (!localStorage.getItem(keyRegreso) && p?.ultima_leccion_fecha) {
         const ultima = new Date(p.ultima_leccion_fecha)
@@ -230,7 +214,6 @@ export default function Home() {
         }
       }
 
-      // Migración única: desbloquear logros nuevos para usuarios que ya tenían el XP
       if (!localStorage.getItem("cl_migracion_xp_v1") && p) {
         localStorage.setItem("cl_migracion_xp_v1", "1")
         const STORAGE_KEY = "cl_achievements_v2"
@@ -243,7 +226,6 @@ export default function Home() {
           { id: "xp_800",  name: "Leyenda",       icon: "⚡", rarity: "epic",      rarityInfo: { label: "Épico",      color: "#c084fc", glow: "rgba(192,132,252,0.45)" }, umbral: 800  },
           { id: "xp_1200", name: "Élite",         icon: "🌟", rarity: "legendary", rarityInfo: { label: "Legendario", color: "#ffd700", glow: "rgba(255,215,0,0.55)"   }, umbral: 1200 },
         ].filter(l => xpActual >= l.umbral && !desbloqueados.includes(l.id))
-
         if (nuevosLogros.length) {
           const actualizados = [...desbloqueados, ...nuevosLogros.map(l => l.id)]
           localStorage.setItem(STORAGE_KEY, JSON.stringify(actualizados))
@@ -252,7 +234,6 @@ export default function Home() {
         }
       }
 
-      // Logros: chequear al cargar perfil
       if (p) {
         const newAchs = checkNewAchievements({
           xp:              p.xp_total         ?? 0,
@@ -272,7 +253,6 @@ export default function Home() {
     init()
   }, [router])
 
-  // Countdown en tiempo real: cada minuto re-evalúa si corresponde recargar una vida
   useEffect(() => {
     if (!perfil || perfil.vidas >= 5) return
     const userId = perfil.id
@@ -312,359 +292,206 @@ export default function Home() {
   const rangoActual = [...RANGOS].reverse().find((r) => xp >= r.min) || RANGOS[0]
   const rangoIdx = RANGOS.indexOf(rangoActual)
   const rangoSiguiente = RANGOS[rangoIdx + 1]
-  const xpBase = rangoActual.min
-  const xpLimite = rangoSiguiente ? rangoSiguiente.min - xpBase : 60
-  const xpEnRango = Math.min(xp - xpBase, xpLimite)
-  const xpParaSiguiente = rangoSiguiente ? xpLimite - xpEnRango : 0
   const vidas = perfil?.vidas ?? 5
   const racha = perfil?.racha_actual ?? 0
-
   const diasSinEntrar = getDiasDesdeUltimaLeccion(perfil?.ultima_leccion_fecha)
-  const fraseBuho     = getFrase({ diasSinEntrar, racha, vidas, xp })
-  const rankTheme     = getRankTheme(xp)
 
-  const estadoMascota = vidas === 0
-    ? "triste"
-    : diasSinEntrar >= 3
-    ? "triste"
-    : racha > 0
-    ? "celebrando"
+  const estadoMascota = vidas === 0 ? "triste"
+    : diasSinEntrar >= 3 ? "triste"
+    : racha > 0 ? "celebrando"
     : "hablando"
 
+  const nombre = perfil?.username || perfil?.email?.split("@")[0] || "?"
+  const inicial = nombre[0]?.toUpperCase() || "?"
+  const rangoProgresoPct = rangoSiguiente
+    ? Math.min(100, ((xp - rangoActual.min) / (rangoSiguiente.min - rangoActual.min)) * 100)
+    : 100
+
   return (
-    <div
-      className="min-h-screen pb-20 md:pt-20"
-      style={{ background: "transparent" }}
-    >
+    <div className="qs">
+      <div className="qs-bg-orb qs-bg-orb-1" />
+      <div className="qs-bg-orb qs-bg-orb-2" />
+
       <Navbar />
 
-      {/* ── Wrapper responsive ── */}
-      <PageTransition>
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="scr-scroll" style={{ paddingTop: 24 }}>
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        {/* Greeting */}
+        <header className="dash-greet">
           <div>
-            <p className="text-zinc-400 text-sm">Bienvenido de vuelta</p>
-            <h1 className="text-2xl font-extrabold truncate max-w-xs">
-              {perfil?.username || perfil?.email?.split("@")[0]}
-            </h1>
+            <div className="dash-hello">¡Hola, <b>{nombre}</b>!</div>
+            <div className="dash-sub">Sigamos aprendiendo contabilidad</div>
           </div>
-          <button
-            onClick={salir}
-            className="text-xs px-4 py-2 rounded-xl text-zinc-400 hover:text-white transition-all hover:bg-white/5"
-            style={{ border: "1px solid var(--color-border)" }}
-          >
-            Salir
+          <button className="dash-avatar" onClick={salir} title="Salir">{inicial}</button>
+        </header>
+
+        {/* Stats row */}
+        <div className="dash-stats">
+          <div className="dash-stat stat-streak">
+            <div className="dash-stat-ico">🔥</div>
+            <div className="dash-stat-num">{racha}</div>
+            <div className="dash-stat-lbl">días de racha</div>
+          </div>
+          <div className="dash-stat stat-xp">
+            <div className="dash-stat-ico">✨</div>
+            <div className="dash-stat-num">{xp}</div>
+            <div className="dash-stat-lbl">XP total</div>
+          </div>
+          <div className="dash-stat stat-lives">
+            <div className="dash-stat-ico-lives">
+              {[0,1,2,3,4].map(i => (
+                <span key={i} className={`mini-heart${i < vidas ? " on" : ""}`}>♥</span>
+              ))}
+            </div>
+            <div className="dash-stat-num">{vidas}/5</div>
+            <div className="dash-stat-lbl">{vidas < 5 && tiempoVida ? `+1 en ${tiempoVida}m` : "vidas"}</div>
+          </div>
+        </div>
+
+        {/* Rango + mascota */}
+        <div className="dash-rank-card">
+          <div className="dash-rank-mascot">
+            <Mascota estado={estadoMascota} size={80} xp={xp} />
+          </div>
+          <div className="dash-rank-info">
+            <div className="dash-rank-row">
+              <span className="dash-rank-emoji">{rangoActual.emoji}</span>
+              <span className="dash-rank-name" style={{ color: rangoActual.color }}>{rangoActual.nombre}</span>
+            </div>
+            <div className="dash-rank-track">
+              <div className="dash-rank-fill" style={{
+                width: `${rangoProgresoPct}%`,
+                background: rangoSiguiente
+                  ? `linear-gradient(90deg, ${rangoActual.color}, ${rangoSiguiente.color})`
+                  : rangoActual.color,
+              }} />
+            </div>
+            <div className="dash-rank-meta">
+              <span>{xp} XP</span>
+              {rangoSiguiente
+                ? <span>Faltan <b style={{ color: rangoSiguiente.color }}>{rangoSiguiente.min - xp} XP</b> para {rangoSiguiente.emoji} {rangoSiguiente.nombre}</span>
+                : <b>¡Rango máximo! 👑</b>}
+            </div>
+          </div>
+        </div>
+
+        {/* Misión semanal */}
+        {misionSemanal && (() => {
+          const pct = Math.min(100, Math.round((misionSemanal.progreso / misionSemanal.meta) * 100))
+          return (
+            <>
+              <div className="dash-section-hdr">
+                <span>Misión semanal</span>
+                <span className="dash-section-sub">{misionSemanal.completada ? "✅ Completada" : `${misionSemanal.progreso}/${misionSemanal.meta} niveles`}</span>
+              </div>
+              <div className="dash-mission-weekly">
+                <div className="dash-weekly-glow" />
+                <div className="dash-weekly-row">
+                  <div className="dash-weekly-ico">🎯</div>
+                  <div className="dash-weekly-text">
+                    <div className="dash-weekly-title">{misionSemanal.descripcion}</div>
+                    <div className="dash-weekly-sub">{misionSemanal.progreso} de {misionSemanal.meta} niveles completados</div>
+                  </div>
+                  <div className="dash-weekly-rew">
+                    <span className="dash-rew-num">+{misionSemanal.xp_recompensa}</span>
+                    <span className="dash-rew-lbl">XP</span>
+                  </div>
+                </div>
+                <div className="dash-weekly-track">
+                  <div className="dash-weekly-fill" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            </>
+          )
+        })()}
+
+        {/* Misiones diarias */}
+        {misiones.length > 0 && (
+          <>
+            <div className="dash-section-hdr">
+              <span>Misiones diarias</span>
+              <span className="dash-section-sub">↺ Reset a medianoche</span>
+            </div>
+            <div className="dash-daily-list">
+              {misiones.map(m => {
+                const pct = Math.min(100, Math.round((m.progreso / m.meta) * 100))
+                return (
+                  <div key={m.id} className={`dash-daily${m.completada ? " done" : ""}`}>
+                    <div className="dash-daily-ico">{m.icono}</div>
+                    <div className="dash-daily-body">
+                      <div className="dash-daily-title">{m.descripcion}</div>
+                      <div className="dash-daily-track">
+                        <div className="dash-daily-fill" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="dash-daily-meta">
+                        <span>{m.progreso}/{m.meta}</span>
+                        <span className="dash-daily-rew">+{m.xp_recompensa} XP {m.completada ? "✓" : ""}</span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+
+        {/* Acceso rápido */}
+        <div className="dash-section-hdr"><span>Acceso rápido</span></div>
+        <div className="dash-grid">
+          <button className="dash-quick tone-green" onClick={() => router.push("/niveles")}>
+            <div className="dash-quick-ico">📚</div>
+            <div className="dash-quick-body">
+              <div className="dash-quick-label">Niveles</div>
+              <div className="dash-quick-sub">Lecciones 1–8</div>
+            </div>
+          </button>
+          <button className="dash-quick tone-gold" onClick={() => router.push("/ranking")}>
+            <div className="dash-quick-ico">🏆</div>
+            <div className="dash-quick-body">
+              <div className="dash-quick-label">Ranking</div>
+              <div className="dash-quick-sub">¿Dónde estás?</div>
+            </div>
+          </button>
+          <button className="dash-quick tone-cyan" onClick={() => router.push("/empresa")}>
+            <div className="dash-quick-ico">🏢</div>
+            <div className="dash-quick-body">
+              <div className="dash-quick-label">Empresa</div>
+              <div className="dash-quick-sub">Distribuidora Andes</div>
+            </div>
+          </button>
+          <button className="dash-quick tone-violet" onClick={() => router.push("/logros")}>
+            <div className="dash-quick-ico">🎖</div>
+            <div className="dash-quick-body">
+              <div className="dash-quick-label">Logros</div>
+              <div className="dash-quick-sub">Tus medallas</div>
+            </div>
           </button>
         </div>
 
-        {/* ── Grid principal: 1 col móvil · 2 col desktop ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-
-          {/* ══ Columna izquierda ══ */}
-          <div className="flex flex-col gap-5">
-
-            {/* Stats row */}
-            <div className="grid grid-cols-3 gap-3">
-              <StatCard icon="🔥" value={racha} label="Racha" color="var(--color-warning)" />
-              <StatCard icon="⚡" value={xp}    label="XP Total" color="var(--color-info)" />
-              <div
-                className="rounded-2xl p-4 text-center"
-                style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
-              >
-                <div className="text-2xl mb-1">❤️</div>
-                <div className="text-xl font-extrabold" style={{ color: "var(--color-danger)" }}>{vidas}</div>
-                <div className="text-xs text-zinc-400">Vidas</div>
-                {vidas < 5 && tiempoVida && (
-                  <div className="text-xs mt-1" style={{ color: "var(--color-warning)" }}>
-                    +1 en {tiempoVida}min
-                  </div>
-                )}
-              </div>
+        {/* Repasar errores */}
+        {tieneErrores && (
+          <button className="dash-repasar" onClick={() => router.push("/repasar")}>
+            <div className="dash-repasar-ico">🔁</div>
+            <div className="dash-repasar-body">
+              <div className="dash-repasar-title">Repasar errores</div>
+              <div className="dash-repasar-sub">Tienes preguntas pendientes · sin XP</div>
             </div>
+            <div className="dash-repasar-arrow">→</div>
+          </button>
+        )}
 
-            {/* Rango + barra XP */}
-            <div
-              className="rounded-2xl p-5"
-              style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
-            >
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-bold text-lg" style={{ color: rangoActual.color }}>
-                  {rangoActual.emoji} {rangoActual.nombre}
-                </span>
-                <span className="text-sm text-zinc-400">
-                  {rangoSiguiente ? `${xpEnRango}/${xpLimite} XP` : `${xp} XP total`}
-                </span>
-              </div>
-              <div className="w-full rounded-full h-4" style={{ background: "#0d1a20" }}>
-                <div
-                  className="h-4 rounded-full transition-all duration-700"
-                  style={{
-                    width: rangoSiguiente ? `${(xpEnRango / xpLimite) * 100}%` : "100%",
-                    background: rankTheme.bar,
-                    boxShadow: `0 0 14px ${rankTheme.glow}`,
-                  }}
-                />
-              </div>
-              <p className="text-xs text-zinc-500 mt-2">
-                {rangoSiguiente
-                  ? `${xpParaSiguiente} XP para ${rangoSiguiente.emoji} ${rangoSiguiente.nombre}`
-                  : "¡Rango máximo alcanzado! 👑"}
-              </p>
-            </div>
-
-            {/* Mascota + CTA */}
-            <div
-              className="flex items-center gap-4 rounded-2xl p-5"
-              style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
-            >
-              <Mascota
-                estado={estadoMascota}
-                size={90}
-                mensaje={fraseBuho}
-                xp={xp}
-              />
-              <div className="flex-1 flex flex-col gap-3">
-                <button
-                  onClick={() => router.push("/niveles")}
-                  className="w-full rounded-xl py-3 font-extrabold text-sm text-white transition-all active:scale-95 hover:brightness-110"
-                  style={{
-                    background: "var(--color-primary)",
-                    boxShadow: "0 4px 0 var(--color-primary-dark), 0 0 20px rgba(88,204,2,0.25)",
-                  }}
-                >
-                  ¡Continuar aprendiendo! 🚀
-                </button>
-              </div>
-            </div>
-
-            {/* Temario */}
-            <div
-              className="rounded-2xl p-5"
-              style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
-            >
-              <h2 className="font-bold mb-4 text-sm text-zinc-300 uppercase tracking-widest">
-                Ruta de aprendizaje
-              </h2>
-              <div className="flex flex-col gap-3">
-                {nivelesRuta.map((nivel, i) => (
-                  <div key={nivel.id} className="flex items-center gap-3">
-                    <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-                      style={{ background: "rgba(88,204,2,0.08)", border: "1px solid rgba(88,204,2,0.15)" }}
-                    >
-                      {nivel.emoji || "📖"}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">{nivel.titulo}</p>
-                      <p className="text-xs text-zinc-500 truncate">{nivel.descripcion}</p>
-                    </div>
-                    <span className="text-xs text-zinc-600 font-mono flex-shrink-0">Nivel {i + 1}</span>
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={() => router.push("/niveles")}
-                className="mt-3 w-full text-xs font-bold py-2 rounded-xl transition-all hover:brightness-110"
-                style={{ background: "rgba(88,204,2,0.08)", color: "var(--color-primary)", border: "1px solid rgba(88,204,2,0.15)" }}
-              >
-                Ver los {nivelesRuta.length} niveles →
-              </button>
-            </div>
-          </div>
-
-          {/* ══ Columna derecha ══ */}
-          <div className="flex flex-col gap-5">
-
-            {/* Misión semanal */}
-            {misionSemanal && (
-              <div
-                className="rounded-2xl p-5"
-                style={{ background: "var(--color-surface)", border: "1.5px solid rgba(192,132,252,0.4)" }}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-bold flex items-center gap-2">
-                    <span>📅</span>
-                    <span>Misión semanal</span>
-                  </h2>
-                  <span className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background: "rgba(192,132,252,0.15)", color: "#c084fc" }}>
-                    +{misionSemanal.xp_recompensa} XP
-                  </span>
-                </div>
-                {(() => {
-                  const pct = Math.min(100, Math.round((misionSemanal.progreso / misionSemanal.meta) * 100))
-                  return (
-                    <>
-                      <p className="text-sm font-semibold mb-2" style={{ color: misionSemanal.completada ? "#c084fc" : "white" }}>
-                        {misionSemanal.descripcion}
-                      </p>
-                      <div className="w-full rounded-full h-2 mb-1" style={{ background: "#0d1a20" }}>
-                        <div
-                          className="h-2 rounded-full transition-all duration-500"
-                          style={{
-                            width: `${pct}%`,
-                            background: misionSemanal.completada ? "#c084fc" : "linear-gradient(90deg,#7c3aed,#c084fc)",
-                            boxShadow: misionSemanal.completada ? "0 0 8px rgba(192,132,252,0.6)" : "none",
-                          }}
-                        />
-                      </div>
-                      <p className="text-xs text-zinc-500">{misionSemanal.progreso}/{misionSemanal.meta} niveles {misionSemanal.completada ? "✅" : "completados esta semana"}</p>
-                    </>
-                  )
-                })()}
-              </div>
-            )}
-
-            {/* Misiones del día */}
-            {misiones.length > 0 && (
-              <div
-                className="rounded-2xl p-5"
-                style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-bold">🎯 Misiones de hoy</h2>
-                  <span className="text-xs text-zinc-500">+15 XP c/u</span>
-                </div>
-                <div className="flex flex-col gap-4">
-                  {misiones.map(m => {
-                    const pct = Math.min(100, Math.round((m.progreso / m.meta) * 100))
-                    return (
-                      <div key={m.id}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-semibold flex items-center gap-2">
-                            <span>{m.icono}</span>
-                            <span style={{ color: m.completada ? "var(--color-primary)" : "white" }}>
-                              {m.descripcion}
-                            </span>
-                          </span>
-                          <span className="text-xs font-bold flex-shrink-0 ml-2" style={{ color: "var(--color-warning)" }}>
-                            {m.completada ? "✅" : `+${m.xp_recompensa} XP`}
-                          </span>
-                        </div>
-                        <div className="w-full rounded-full h-2" style={{ background: "#0d1a20" }}>
-                          <div
-                            className="h-2 rounded-full transition-all duration-500"
-                            style={{
-                              width: `${pct}%`,
-                              background: m.completada ? "var(--color-primary)" : "var(--color-info)",
-                              boxShadow: m.completada ? "0 0 8px rgba(88,204,2,0.5)" : "0 0 8px rgba(28,176,246,0.4)",
-                            }}
-                          />
-                        </div>
-                        <p className="text-xs text-zinc-500 mt-0.5">{m.progreso}/{m.meta}</p>
-                      </div>
-                    )
-                  })}
-                </div>
-                <p className="text-xs text-zinc-600 mt-4 text-center">↺ Resetean a medianoche</p>
-              </div>
-            )}
-
-            {/* Progreso rápido */}
-            <div
-              className="rounded-2xl p-5"
-              style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
-            >
-              <h2 className="font-bold mb-4">📈 Tu progreso</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <MiniStat
-                  label="Rango actual"
-                  value={`${rangoActual.emoji} ${rangoActual.nombre}`}
-                  color={rangoActual.color}
-                />
-                <MiniStat
-                  label="XP ganado"
-                  value={`${xp} XP`}
-                  color="var(--color-info)"
-                />
-                <MiniStat
-                  label="Racha actual"
-                  value={`${racha} día${racha !== 1 ? "s" : ""}`}
-                  color="var(--color-warning)"
-                />
-                <MiniStat
-                  label="Vidas"
-                  value={`${"❤️".repeat(Math.min(vidas, 5))}`}
-                  color="var(--color-danger)"
-                />
-              </div>
-            </div>
-
-            {/* Acceso rápido */}
-            <div
-              className="rounded-2xl p-5"
-              style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
-            >
-              <h2 className="font-bold mb-4">⚡ Acceso rápido</h2>
-              <div className="flex flex-col gap-3">
-                <QuickBtn
-                  icon="📚"
-                  label="Ir a los niveles"
-                  sub="Elige tu lección"
-                  onClick={() => router.push("/niveles")}
-                  color="var(--color-primary)"
-                />
-                <QuickBtn
-                  icon="🏆"
-                  label="Ver el ranking"
-                  sub="¿Dónde estás?"
-                  onClick={() => router.push("/ranking")}
-                  color="var(--color-warning)"
-                />
-                <QuickBtn
-                  icon="🏢"
-                  label="Modo Empresa"
-                  sub="Distribuidora Andes S.A."
-                  onClick={() => router.push("/empresa")}
-                  color="#eab308"
-                />
-                <QuickBtn
-                  icon="🏅"
-                  label="Mis logros"
-                  sub="Ver todos tus logros"
-                  onClick={() => router.push("/logros")}
-                  color="#c084fc"
-                />
-                {tieneErrores && (
-                  <QuickBtn
-                    icon="🔁"
-                    label="Repasar errores"
-                    sub="Domina lo que fallaste"
-                    onClick={() => router.push("/repasar")}
-                    color="var(--color-danger)"
-                  />
-                )}
-              </div>
-            </div>
-
-          </div>
-        </div>
+        <div className="dash-bottom-spacer" />
       </div>
-      </PageTransition>
 
-      {/* Partículas bonus de regreso */}
       {bonusKey > 0 && <Particles key={bonusKey} preset="xpGain" />}
 
-      {/* Banner bonus de regreso */}
       {bonusBanner && (
-        <div
-          className="fixed top-20 left-1/2 z-[80] animate-pop-in"
-          style={{ transform: "translateX(-50%)", pointerEvents: "none" }}
-        >
-          <div
-            className="flex items-center gap-3 px-5 py-3 rounded-2xl font-bold text-sm whitespace-nowrap"
-            style={{
-              background: "rgba(13,46,20,0.97)",
-              border: "1.5px solid var(--color-primary)",
-              boxShadow: "0 4px 24px rgba(88,204,2,0.25)",
-              color: "#fff",
-            }}
-          >
-            <span className="text-xl">🎉</span>
+        <div className="fixed top-20 left-1/2 z-[80] animate-pop-in" style={{ transform: "translateX(-50%)", pointerEvents: "none" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderRadius: 16, fontWeight: 700, fontSize: 14, whiteSpace: "nowrap", background: "rgba(6,20,10,0.97)", border: "1.5px solid var(--accent-green)", boxShadow: "0 4px 24px rgba(34,197,94,0.3)", color: "#fff" }}>
+            <span style={{ fontSize: 20 }}>🎉</span>
             <div>
               <p>{bonusBanner.msg}</p>
-              <p style={{ color: "var(--color-primary)" }}>+{bonusBanner.xp} XP de bienvenida</p>
+              <p style={{ color: "var(--accent-green-bright)" }}>+{bonusBanner.xp} XP de bienvenida</p>
             </div>
           </div>
         </div>
@@ -672,7 +499,6 @@ export default function Home() {
 
       <Onboarding />
 
-      {/* Achievement toast queue */}
       <AchievementToast
         achievement={curAch}
         onDone={() => {
@@ -681,60 +507,6 @@ export default function Home() {
           setAchQueue(q => q.slice(1))
         }}
       />
-
     </div>
   )
 }
-
-/* ── Componentes auxiliares ── */
-
-function StatCard({ icon, value, label, color }) {
-  return (
-    <div
-      className="rounded-2xl p-4 text-center"
-      style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
-    >
-      <div className="text-2xl mb-1">{icon}</div>
-      <div className="text-xl font-extrabold" style={{ color }}>{value}</div>
-      <div className="text-xs text-zinc-400">{label}</div>
-    </div>
-  )
-}
-
-function MiniStat({ label, value, color }) {
-  return (
-    <div
-      className="rounded-xl p-3"
-      style={{ background: "#0d1a20", border: "1px solid var(--color-border)" }}
-    >
-      <p className="text-xs text-zinc-500 mb-1">{label}</p>
-      <p className="text-sm font-bold" style={{ color }}>{value}</p>
-    </div>
-  )
-}
-
-function QuickBtn({ icon, label, sub, onClick, color }) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-4 w-full text-left rounded-xl px-4 py-3 transition-all hover:brightness-110 active:scale-[0.98]"
-      style={{
-        background: "rgba(255,255,255,0.03)",
-        border: `1px solid ${color}33`,
-      }}
-    >
-      <span
-        className="text-2xl w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-        style={{ background: `${color}18` }}
-      >
-        {icon}
-      </span>
-      <div>
-        <p className="font-bold text-sm" style={{ color }}>{label}</p>
-        <p className="text-xs text-zinc-500">{sub}</p>
-      </div>
-      <span className="ml-auto text-zinc-600">›</span>
-    </button>
-  )
-}
-

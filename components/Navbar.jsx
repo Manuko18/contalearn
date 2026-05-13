@@ -4,10 +4,50 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 
-const links = [
-  { href: "/",        icon: "🏠", label: "Inicio", badge: true },
-  { href: "/niveles", icon: "📚", label: "Niveles" },
-  { href: "/ranking", icon: "🏆", label: "Ranking" },
+const HomeIcon = () => (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 10L12 3l9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>
+    <path d="M9 21V13h6v8"/>
+  </svg>
+)
+const BookIcon = () => (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 4h10a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3z"/>
+    <path d="M17 4h2a1 1 0 0 1 1 1v14"/>
+  </svg>
+)
+const BuildingIcon = () => (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="4" y="3" width="16" height="18" rx="1"/>
+    <line x1="9" y1="7" x2="9" y2="7.01"/>
+    <line x1="15" y1="7" x2="15" y2="7.01"/>
+    <line x1="9" y1="11" x2="9" y2="11.01"/>
+    <line x1="15" y1="11" x2="15" y2="11.01"/>
+    <path d="M10 21v-5h4v5"/>
+  </svg>
+)
+const TrophyIcon = () => (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 4h8v7a4 4 0 0 1-8 0z"/>
+    <path d="M16 5h4v3a3 3 0 0 1-3 3"/>
+    <path d="M8 5H4v3a3 3 0 0 0 3 3"/>
+    <line x1="12" y1="15" x2="12" y2="19"/>
+    <line x1="9" y1="21" x2="15" y2="21"/>
+  </svg>
+)
+const RankingIcon = () => (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="8" r="4"/>
+    <path d="M4 21a8 8 0 0 1 16 0"/>
+  </svg>
+)
+
+const NAV_ITEMS = [
+  { href: "/",        Icon: HomeIcon,     label: "Inicio",  badge: true  },
+  { href: "/niveles", Icon: BookIcon,     label: "Niveles", badge: false },
+  { href: "/empresa", Icon: BuildingIcon, label: "Empresa", badge: false },
+  { href: "/logros",  Icon: TrophyIcon,   label: "Logros",  badge: false },
+  { href: "/ranking", Icon: RankingIcon,  label: "Ranking", badge: false },
 ]
 
 export default function Navbar() {
@@ -21,85 +61,46 @@ export default function Navbar() {
 
   return (
     <>
-      {/* ── Barra superior (desktop) ── */}
+      {/* ── Desktop top bar ── */}
       <nav
-        className="hidden md:flex fixed top-0 left-0 right-0 z-50 items-center px-8 py-0 h-16"
+        className="hidden md:flex fixed top-0 left-0 right-0 z-50 items-center px-8 h-14"
         style={{
-          background: "rgba(19,31,36,0.72)",
+          background: "rgba(6,11,24,0.88)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(88,204,2,0.12)",
-          boxShadow: "0 2px 32px 0 rgba(88,204,2,0.05)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
         }}
       >
-        {/* Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2 font-extrabold text-xl mr-10 select-none"
           style={{
-            color: "var(--color-primary)",
-            textShadow: "0 0 18px rgba(88,204,2,0.55)",
-            letterSpacing: "-0.5px",
+            color: "var(--accent-green-bright)",
+            fontWeight: 800, fontSize: 18, letterSpacing: "-0.5px",
+            textDecoration: "none", marginRight: 32,
+            textShadow: "0 0 18px rgba(34,197,94,0.55)",
           }}
         >
-          <span
-            style={{
-              display: "inline-block",
-              filter: "drop-shadow(0 0 8px rgba(88,204,2,0.7))",
-            }}
-          >
-            ⚡
-          </span>
-          ContaLearn
+          ⚡ ContaLearn
         </Link>
-
-        {/* Links */}
-        <div className="flex items-center gap-1">
-          {links.map(({ href, icon, label, badge }) => {
+        <div style={{ display: "flex", gap: 4 }}>
+          {NAV_ITEMS.map(({ href, label, badge }) => {
             const active = pathname === href
             return (
               <Link
                 key={href}
                 href={href}
-                className="relative flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-xl transition-all duration-200 group"
                 style={{
-                  color: active ? "var(--color-primary)" : "#94a3b8",
+                  position: "relative", display: "flex", alignItems: "center",
+                  gap: 6, fontSize: 13, fontWeight: 700,
+                  padding: "6px 14px", borderRadius: 10,
+                  textDecoration: "none", transition: "all 0.2s",
+                  color: active ? "var(--accent-green-bright)" : "var(--text-3)",
+                  background: active ? "rgba(34,197,94,0.1)" : "transparent",
                 }}
               >
-                {/* Hover glow bg */}
-                <span
-                  className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                  style={{ background: "rgba(88,204,2,0.08)" }}
-                  aria-hidden
-                />
-
-                {/* Active glow bg */}
-                {active && (
-                  <span
-                    className="absolute inset-0 rounded-xl"
-                    style={{ background: "rgba(88,204,2,0.13)" }}
-                    aria-hidden
-                  />
-                )}
-
-                <span className="relative text-base">
-                  {icon}
-                  {badge && misionesPendientes > 0 && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full" style={{ background: "var(--color-danger)" }} />
-                  )}
-                </span>
-                <span className="relative">{label}</span>
-
-                {/* Active underline bar */}
-                {active && (
-                  <span
-                    className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full"
-                    style={{
-                      background: "var(--color-primary)",
-                      boxShadow: "0 0 10px 2px rgba(88,204,2,0.7)",
-                    }}
-                    aria-hidden
-                  />
+                {label}
+                {badge && misionesPendientes > 0 && (
+                  <span style={{ width: 7, height: 7, background: "#ef4444", borderRadius: "50%", position: "absolute", top: 6, right: 10 }} />
                 )}
               </Link>
             )
@@ -107,64 +108,21 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* ── Barra inferior (móvil) ── */}
-      <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center px-2 py-2"
-        style={{
-          background: "rgba(19,31,36,0.85)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          borderTop: "1px solid rgba(88,204,2,0.12)",
-          boxShadow: "0 -2px 24px rgba(0,0,0,0.4)",
-        }}
-      >
-        {links.map(({ href, icon, label, badge }) => {
+      {/* ── Mobile bottom nav ── */}
+      <nav className="bnav md:hidden">
+        {NAV_ITEMS.map(({ href, Icon, label, badge }) => {
           const active = pathname === href
           return (
             <Link
               key={href}
               href={href}
-              className="relative flex flex-col items-center gap-0.5 px-6 py-1 rounded-xl transition-all duration-200"
-              style={{ color: active ? "var(--color-primary)" : "#64748b" }}
+              className={`bnav-item${active ? " active" : ""}`}
             >
-              {active && (
-                <span
-                  className="absolute inset-0 rounded-xl"
-                  style={{ background: "rgba(88,204,2,0.12)" }}
-                  aria-hidden
-                />
-              )}
-              <span
-                className="relative text-2xl"
-                style={{
-                  filter: active
-                    ? "drop-shadow(0 0 6px rgba(88,204,2,0.8))"
-                    : "none",
-                }}
-              >
-                {icon}
-                {badge && misionesPendientes > 0 && (
-                  <span className="absolute top-0 right-0 w-2 h-2 rounded-full" style={{ background: "var(--color-danger)" }} />
-                )}
+              <span className="bnav-ico">
+                <Icon />
+                {badge && misionesPendientes > 0 && <span className="bnav-dot" />}
               </span>
-              <span
-                className="relative text-[10px] font-bold"
-                style={{
-                  textShadow: active ? "0 0 10px rgba(88,204,2,0.7)" : "none",
-                }}
-              >
-                {label}
-              </span>
-              {active && (
-                <span
-                  className="absolute top-0 left-1/4 right-1/4 h-[2px] rounded-full"
-                  style={{
-                    background: "var(--color-primary)",
-                    boxShadow: "0 0 8px 1px rgba(88,204,2,0.8)",
-                  }}
-                  aria-hidden
-                />
-              )}
+              <span className="bnav-label">{label}</span>
             </Link>
           )
         })}

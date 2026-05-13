@@ -20,7 +20,6 @@ export default function RepasarPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [errores, setErrores] = useState([])
-  // { [id]: { opcion: string, correcto: boolean } }
   const [respondido, setRespondido] = useState({})
 
   useEffect(() => {
@@ -34,7 +33,6 @@ export default function RepasarPage() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
-      // Filtrar los que ya dominó (localStorage como fallback si RLS bloquea el DELETE)
       const mastered = getMastered()
       const pendientes = (mistakes || []).filter(m => !mastered.has(String(m.id)))
 
@@ -49,11 +47,7 @@ export default function RepasarPage() {
       const [{ data: niveles }, ...distResults] = await Promise.all([
         supabase.from("niveles").select("id, titulo").in("id", nivelIds),
         ...nivelIds.map(nid =>
-          supabase
-            .from("nivel_preguntas")
-            .select("respuesta_correcta")
-            .eq("nivel_id", nid)
-            .limit(30)
+          supabase.from("nivel_preguntas").select("respuesta_correcta").eq("nivel_id", nid).limit(30)
         ),
       ])
 
@@ -65,20 +59,14 @@ export default function RepasarPage() {
         ])
       )
 
-      // Calcular opciones una sola vez para evitar re-shuffle en cada render
       const erroresConOpciones = pendientes.map(m => {
         const correcta = m.respuesta_correcta
         const wrong1 = m.tu_respuesta && m.tu_respuesta !== correcta ? m.tu_respuesta : null
-        const pool = (distPool[m.nivel_id] || [])
-          .filter(r => r !== correcta && r !== wrong1)
+        const pool = (distPool[m.nivel_id] || []).filter(r => r !== correcta && r !== wrong1)
         const shuffledPool = [...pool].sort(() => Math.random() - 0.5)
         const wrongs = [wrong1, ...shuffledPool].filter(Boolean).slice(0, 3)
         const opciones = [correcta, ...wrongs].sort(() => Math.random() - 0.5).slice(0, 4)
-        return {
-          ...m,
-          opciones,
-          nivelNombre: nivelMap[m.nivel_id] || `Nivel ${m.nivel_id}`,
-        }
+        return { ...m, opciones, nivelNombre: nivelMap[m.nivel_id] || `Nivel ${m.nivel_id}` }
       })
 
       setErrores(erroresConOpciones)
@@ -93,17 +81,12 @@ export default function RepasarPage() {
     setRespondido(prev => ({ ...prev, [mistake.id]: { opcion: opcionSeleccionada, correcto } }))
 
     if (correcto) {
-      // Marcar como dominado en localStorage inmediatamente (fallback si RLS bloquea DELETE)
       addMastered(mistake.id)
       setTimeout(async () => {
         const { error } = await supabase.from("user_mistakes").delete().eq("id", mistake.id)
         if (error) console.warn("No se pudo eliminar de BD (RLS):", error.message)
         setErrores(prev => prev.filter(e => e.id !== mistake.id))
-        setRespondido(prev => {
-          const next = { ...prev }
-          delete next[mistake.id]
-          return next
-        })
+        setRespondido(prev => { const next = { ...prev }; delete next[mistake.id]; return next })
       }, 1400)
     }
   }
@@ -112,20 +95,21 @@ export default function RepasarPage() {
 
   if (!errores.length) {
     return (
-      <div className="min-h-screen pb-20 md:pt-20" style={{ background: "transparent" }}>
-        <Navbar />
-        <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-          <div className="text-7xl mb-5">🎉</div>
-          <h1 className="text-2xl font-extrabold mb-2">Sin errores pendientes</h1>
-          <p className="text-zinc-400 text-sm mb-8">¡Tienes todos los conceptos dominados!</p>
+      <div className="qs">
+        <div className="qs-bg-orb qs-bg-orb-1" />
+        <div className="qs-bg-orb qs-bg-orb-2" />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, minHeight: "100vh", textAlign: "center", padding: "0 20px" }}>
+          <div style={{ fontSize: 72 }}>🎉</div>
+          <h1 style={{ fontSize: 24, fontWeight: 800 }}>Sin errores pendientes</h1>
+          <p style={{ color: "var(--text-3)", fontSize: 13 }}>¡Tienes todos los conceptos dominados!</p>
           <button
             onClick={() => router.push("/")}
-            className="px-6 py-3 rounded-xl font-bold text-sm transition-all hover:brightness-110 active:scale-95"
-            style={{ background: "var(--color-primary)", color: "white" }}
+            style={{ padding: "12px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, background: "var(--accent-green)", color: "#042713", border: "none", cursor: "pointer" }}
           >
             Volver al inicio
           </button>
         </div>
+        <Navbar />
       </div>
     )
   }
@@ -133,62 +117,54 @@ export default function RepasarPage() {
   const pendientes = errores.filter(e => !respondido[e.id]?.correcto).length
 
   return (
-    <div className="min-h-screen pb-20 md:pt-20" style={{ background: "transparent" }}>
-      <Navbar />
+    <div className="qs">
+      <div className="qs-bg-orb qs-bg-orb-1" />
+      <div className="qs-bg-orb qs-bg-orb-2" />
 
-      <div className="max-w-2xl mx-auto px-4 py-6">
-
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={() => router.push("/")}
-            className="text-zinc-400 hover:text-white text-xl transition-colors"
-          >
-            ←
-          </button>
-          <div>
-            <h1 className="text-2xl font-extrabold">🔁 Repasar errores</h1>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              {pendientes} pregunta{pendientes !== 1 ? "s" : ""} pendiente{pendientes !== 1 ? "s" : ""} · Sin XP · Modo estudio
-            </p>
-          </div>
+      <header className="scr-header">
+        <button className="scr-back" onClick={() => router.push("/")}>←</button>
+        <div className="scr-title">Repasar errores</div>
+        <div className="scr-hdr-chip">
+          <span>🔁</span>
+          <span>{pendientes}</span>
         </div>
+      </header>
 
-        <div className="flex flex-col gap-5">
+      <div className="scr-scroll">
+        <p style={{ fontSize: 11.5, color: "var(--text-3)", fontWeight: 600, marginBottom: 12 }}>
+          {pendientes} pendiente{pendientes !== 1 ? "s" : ""} · Sin XP · Modo estudio
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {errores.map(mistake => {
             const resp = respondido[mistake.id]
 
             return (
               <div
                 key={mistake.id}
-                className="rounded-2xl p-5 transition-all duration-300"
                 style={{
-                  background: "var(--color-surface)",
-                  border: resp?.correcto
-                    ? "1.5px solid var(--color-primary)"
-                    : "1px solid var(--color-border)",
+                  background: "var(--surface)",
+                  border: `1.5px solid ${resp?.correcto ? "var(--accent-green)" : "rgba(255,255,255,0.1)"}`,
+                  borderRadius: 18,
+                  padding: 18,
                   opacity: resp?.correcto ? 0.6 : 1,
+                  transition: "all 0.3s",
                 }}
               >
-                <p className="text-xs text-zinc-500 mb-1">📘 {mistake.nivelNombre}</p>
-                <p className="font-semibold text-sm leading-snug mb-4">{mistake.pregunta}</p>
+                <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  📘 {mistake.nivelNombre}
+                </p>
+                <p style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.4, marginBottom: 14 }}>{mistake.pregunta}</p>
 
-                <div className="flex flex-col gap-2">
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {mistake.opciones.map(opcion => {
-                    let borderColor = "var(--color-border)"
-                    let bgColor = "rgba(255,255,255,0.02)"
-                    let textColor = "white"
+                    let borderColor = "rgba(255,255,255,0.1)"
+                    let bgColor = "var(--surface)"
+                    let textColor = "var(--text)"
 
                     if (resp) {
-                      if (opcion === mistake.respuesta_correcta) {
-                        borderColor = "var(--color-primary)"
-                        bgColor = "rgba(88,204,2,0.12)"
-                        textColor = "var(--color-primary)"
-                      } else if (opcion === resp.opcion && !resp.correcto) {
-                        borderColor = "var(--color-danger)"
-                        bgColor = "rgba(239,68,68,0.08)"
-                        textColor = "var(--color-danger)"
-                      }
+                      if (opcion === mistake.respuesta_correcta) { borderColor = "#22c55e"; bgColor = "rgba(34,197,94,0.12)"; textColor = "#86efac" }
+                      else if (opcion === resp.opcion && !resp.correcto) { borderColor = "#ef4444"; bgColor = "rgba(239,68,68,0.08)"; textColor = "#fca5a5" }
                     }
 
                     return (
@@ -196,13 +172,7 @@ export default function RepasarPage() {
                         key={opcion}
                         onClick={() => responder(mistake, opcion)}
                         disabled={!!resp}
-                        className="text-left rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 hover:brightness-110 active:scale-[0.99]"
-                        style={{
-                          background: bgColor,
-                          border: `1.5px solid ${borderColor}`,
-                          color: textColor,
-                          cursor: resp ? "default" : "pointer",
-                        }}
+                        style={{ textAlign: "left", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, background: bgColor, border: `1.5px solid ${borderColor}`, color: textColor, cursor: resp ? "default" : "pointer", transition: "all 0.18s", fontFamily: "inherit" }}
                       >
                         {opcion}
                       </button>
@@ -211,12 +181,12 @@ export default function RepasarPage() {
                 </div>
 
                 {resp && !resp.correcto && (
-                  <p className="text-xs mt-3" style={{ color: "var(--color-danger)" }}>
+                  <p style={{ fontSize: 11.5, marginTop: 10, color: "#fca5a5" }}>
                     Respondiste: &ldquo;{resp.opcion}&rdquo; — Sigue repasando este concepto
                   </p>
                 )}
                 {resp?.correcto && (
-                  <p className="text-xs mt-3 font-bold" style={{ color: "var(--color-primary)" }}>
+                  <p style={{ fontSize: 11.5, marginTop: 10, fontWeight: 800, color: "var(--accent-green)" }}>
                     ✅ ¡Correcto! Eliminando del banco de repaso...
                   </p>
                 )}
@@ -225,7 +195,10 @@ export default function RepasarPage() {
           })}
         </div>
 
+        <div className="dash-bottom-spacer" />
       </div>
+
+      <Navbar />
     </div>
   )
 }

@@ -6,7 +6,6 @@ import { supabase } from "../../lib/supabaseClient"
 import Mascota from "../../components/Mascota"
 import { getFrase } from "../../lib/frases"
 import LoadingConti from "../../components/LoadingConti"
-import PageTransition from "../../components/PageTransition"
 import EpicMoment from "../../components/EpicMoment"
 import AchievementToast from "../../components/AchievementToast"
 import { sound } from "../../lib/audio"
@@ -687,20 +686,21 @@ function LeccionInner() {
   if (loading) return <LoadingConti texto="Cargando lección..." />
   if (cargandoJuego) return <LoadingConti texto="Preparando ejercicios..." />
   if (errorJuego) return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4 text-center">
-      <span className="text-6xl">⚠️</span>
+    <div className="qs" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "0 20px", textAlign: "center" }}>
+      <div className="qs-bg-orb qs-bg-orb-1" />
+      <div className="qs-bg-orb qs-bg-orb-2" />
+      <span style={{ fontSize: 64 }}>⚠️</span>
       <div>
-        <h2 className="text-2xl font-extrabold mb-2">Algo salió mal</h2>
-        <p className="text-zinc-400 max-w-xs">{errorJuego}</p>
+        <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Algo salió mal</h2>
+        <p style={{ color: "var(--text-3)", maxWidth: 280 }}>{errorJuego}</p>
       </div>
       <button
         onClick={() => { setErrorJuego(null); cargarPreguntasIA() }}
-        className="rounded-2xl px-8 py-4 font-extrabold text-white transition-all active:scale-95"
-        style={{ background: "var(--color-primary)", boxShadow: "0 4px 0 var(--color-primary-dark)" }}
+        style={{ padding: "14px 32px", borderRadius: 16, fontWeight: 800, fontSize: 16, background: "var(--accent-green)", color: "#042713", border: "none", cursor: "pointer", boxShadow: "0 4px 0 #14532d" }}
       >
         🔄 Reintentar
       </button>
-      <button onClick={() => router.push("/niveles")} className="text-zinc-500 text-sm underline">Volver a niveles</button>
+      <button onClick={() => router.push("/niveles")} style={{ color: "var(--text-3)", fontSize: 13, background: "none", border: "none", cursor: "pointer" }}>Volver a niveles</button>
     </div>
   )
   if (vidas <= 0) return <PantallaFin onVolver={() => router.push("/")} />
@@ -836,147 +836,127 @@ function LeccionInner() {
     const nombreTipo = { multiple_choice: "Opción múltiple", verdadero_falso: "Verdadero/Falso", completar_espacio: "Completar" }
 
     return (
-      <div className="min-h-screen pb-10" style={{ background: "transparent" }}>
-        <div className="max-w-lg mx-auto px-4 py-6">
-          {/* Header resultado */}
-          <div className="text-center mb-6">
-            <div className="flex justify-center mb-2">
+      <div className="qs scr-resultados">
+        <div className="qs-bg-orb qs-bg-orb-1" />
+        <div className="qs-bg-orb qs-bg-orb-2" />
+
+        <div className="scr-scroll">
+          {/* Hero */}
+          <div className="res-hero">
+            <div className="res-confetti">
+              <span style={{ left: "10%", animationDelay: "0s" }}>✦</span>
+              <span style={{ left: "30%", animationDelay: "0.3s" }}>✶</span>
+              <span style={{ left: "55%", animationDelay: "0.1s" }}>✦</span>
+              <span style={{ left: "78%", animationDelay: "0.5s" }}>✶</span>
+              <span style={{ left: "88%", animationDelay: "0.2s" }}>✦</span>
+            </div>
+            <div className="res-mascot-wrap">
               <Mascota
                 estado={pct === 100 ? "celebrando" : pct >= 70 ? "feliz" : pct >= 40 ? "pensando" : "triste"}
-                size={100}
+                size={110}
                 mensaje={getFrase({ combo, falloVarias: fallosSegidos >= 2, terminoNivel: pct === 100, vidas })}
               />
             </div>
-            <h1 className="text-2xl font-extrabold">{mensaje}</h1>
-            <p className="text-zinc-400 text-sm mt-1">{nivel?.titulo}</p>
-          </div>
+            <div className="res-title">{mensaje}</div>
+            <div className="res-sub">{nivel?.titulo} · {dificultadSesionRef.current === "facil" ? "Fácil" : dificultadSesionRef.current === "normal" ? "Normal" : "Difícil"}</div>
 
-          {/* Stats principales */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="rounded-2xl p-4 text-center" style={{ background: "#0d2e14", border: "1px solid var(--color-primary)" }}>
-              <p className="text-3xl font-extrabold" style={{ color: "var(--color-primary)" }}>{correctas}/{resultados.length}</p>
-              <p className="text-xs text-zinc-400">Correctas</p>
-            </div>
-            <div className="rounded-2xl p-4 text-center" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-              <p className="text-3xl font-extrabold" style={{ color: "var(--color-warning)" }}>{pct}%</p>
-              <p className="text-xs text-zinc-400">Precisión</p>
-            </div>
-          </div>
-
-          {/* Stats secundarias */}
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="rounded-2xl p-3 text-center" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-              <p className="text-xl font-extrabold" style={{ color: "var(--color-info)" }}>+{xpGanado}</p>
-              <p className="text-xs text-zinc-400">XP ganado</p>
-            </div>
-            <div className="rounded-2xl p-3 text-center" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-              <p className="text-xl font-extrabold text-white">{tiempoPromedio}s</p>
-              <p className="text-xs text-zinc-400">Tiempo prom.</p>
-            </div>
-            <div className="rounded-2xl p-3 text-center" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-              <p className="text-xl font-extrabold" style={{ color: "var(--color-danger)" }}>{incorrectas}</p>
-              <p className="text-xs text-zinc-400">Falladas</p>
-            </div>
-          </div>
-
-          {/* Por tipo de pregunta */}
-          {Object.keys(porTipo).length > 1 && (
-            <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-              <p className="text-sm font-bold mb-3">Por tipo de pregunta</p>
-              {Object.entries(porTipo).map(([tipo, data]) => (
-                <div key={tipo} className="flex items-center gap-3 mb-2">
-                  <span className="text-xs text-zinc-400 w-32">{nombreTipo[tipo] || tipo}</span>
-                  <div className="flex-1 rounded-full h-2" style={{ background: "#0d1a20" }}>
-                    <div className="h-2 rounded-full" style={{ width: `${(data.correctas / data.total) * 100}%`, background: "var(--color-primary)" }} />
-                  </div>
-                  <span className="text-xs font-bold" style={{ color: "var(--color-primary)" }}>{data.correctas}/{data.total}</span>
+            <div className="res-score-row">
+              <div className="res-score-card">
+                <div className="res-score-big">{correctas}<span>/{resultados.length}</span></div>
+                <div className="res-score-lbl">Correctas</div>
+              </div>
+              <div className="res-score-card xp">
+                <div className="res-score-big res-xp-big">
+                  <span className="res-xp-plus">+</span>{xpGanado}
                 </div>
-              ))}
+                <div className="res-score-lbl">XP ganado</div>
+              </div>
+              <div className="res-score-card combo">
+                <div className="res-score-big">×{maxComboRef.current || combo}</div>
+                <div className="res-score-lbl">Combo máx</div>
+              </div>
             </div>
-          )}
 
-          {/* Detalle por pregunta */}
-          <p className="text-sm font-bold mb-3">Detalle de respuestas</p>
-          {cargandoIA && (
-            <div className="rounded-2xl p-4 mb-3 flex items-center gap-3" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
-              <div className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--color-primary)", borderTopColor: "transparent" }} />
-              <p className="text-sm text-zinc-400">Conti está analizando tus errores...</p>
-            </div>
-          )}
-          <div className="flex flex-col gap-3 mb-6">
-            {(() => {
-              let errorIdx = 0
-              return resultados.map((r, i) => {
-                const ia = !r.correcta ? explicacionesIA[errorIdx++] : null
-                return (
-                  <div key={i} className="rounded-2xl p-4" style={{ background: r.correcta ? "#0d2e14" : "#2e0d0d", border: `1px solid ${r.correcta ? "var(--color-primary)" : "var(--color-danger)"}` }}>
-                    <div className="flex justify-between items-start mb-1">
-                      <p className="text-sm font-bold flex-1 pr-2">{r.correcta ? "✅" : "❌"} {r.pregunta}</p>
-                      <span className="text-xs text-zinc-500 flex-shrink-0">{r.tiempo}s</span>
-                    </div>
-                    {!r.correcta && (
-                      <div className="text-xs mt-2 flex flex-col gap-1">
-                        <p className="text-zinc-400">Tu respuesta: <span style={{ color: "var(--color-danger)" }}>{r.tuRespuesta}</span></p>
-                        <p className="text-zinc-400">Correcta: <span style={{ color: "var(--color-primary)" }}>{mostrarRespuesta(String(r.respuestaCorrecta))}</span></p>
-                        {ia ? (
-                          <div className="mt-2 flex flex-col gap-2 pt-2" style={{ borderTop: "1px solid rgba(255,75,75,0.2)" }}>
-                            {ia.concepto && <p className="text-zinc-200"><span className="font-bold" style={{ color: "var(--color-info)" }}>📘 Concepto:</span> {ia.concepto}</p>}
-                            {ia.ejemplo  && <p className="text-zinc-200"><span className="font-bold" style={{ color: "var(--color-warning)" }}>🔢 Ejemplo:</span> {ia.ejemplo}</p>}
-                            {ia.error    && <p className="text-zinc-200"><span className="font-bold" style={{ color: "var(--color-danger)" }}>⚠️ Tu error:</span> {ia.error}</p>}
-                            {ia.practica && <p className="text-zinc-200"><span className="font-bold" style={{ color: "var(--color-primary)" }}>🎯 Practica:</span> {ia.practica}</p>}
-                          </div>
-                        ) : (
-                          r.explicacion && <p className="mt-1 text-zinc-300 italic">💡 {r.explicacion}</p>
-                        )}
+            {pct >= 70 && (
+              <div className="res-progression">
+                <span className="res-prog-ico">✨</span>
+                <span>
+                  {dificultadSesionRef.current === "facil" && "Desbloqueas dificultad Normal"}
+                  {dificultadSesionRef.current === "normal" && "Desbloqueas dificultad Difícil"}
+                  {dificultadSesionRef.current === "dificil" && "¡Nivel completado! Siguiente desbloqueado"}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Explicaciones IA */}
+          {(cargandoIA || resultados.some(r => !r.correcta)) && (
+            <div className="res-section">
+              <div className="res-section-hdr">
+                <span className="res-ai-badge">IA</span>
+                <span>Explicación de tus errores</span>
+                {cargandoIA
+                  ? <span className="res-section-meta" style={{ fontSize: 11 }}>analizando...</span>
+                  : <span className="res-section-meta">{resultados.filter(r => !r.correcta).length}</span>
+                }
+              </div>
+
+              {(() => {
+                let errorIdx = 0
+                return resultados.map((r, i) => {
+                  if (r.correcta) return null
+                  const ia = explicacionesIA[errorIdx++]
+                  return (
+                    <div key={i} className="res-error-card">
+                      <div className="res-err-q">{r.pregunta}</div>
+                      <div className="res-err-row">
+                        <div className="res-err-mine">
+                          <span className="res-err-lbl">Tú</span>
+                          <span className="res-err-val">{r.tuRespuesta}</span>
+                        </div>
+                        <div className="res-err-correct">
+                          <span className="res-err-lbl">Correcta</span>
+                          <span className="res-err-val">{mostrarRespuesta(String(r.respuestaCorrecta))}</span>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                )
-              })
-            })()}
-          </div>
-
-          {/* Mensaje de progresión — usa dificultadSesionRef para no leer el estado ya actualizado */}
-          {pct >= 70 && dificultadSesionRef.current === "facil" && (
-            <div className="rounded-2xl p-4 mb-4 text-center" style={{ background: "#0d2e14", border: "1px solid var(--color-primary)" }}>
-              <p className="text-lg font-extrabold" style={{ color: "var(--color-primary)" }}>🎉 ¡Superaste el nivel Fácil!</p>
-              <p className="text-sm text-zinc-400 mt-1">La próxima sesión será en dificultad 🟡 Normal</p>
-            </div>
-          )}
-          {pct >= 70 && dificultadSesionRef.current === "normal" && (
-            <div className="rounded-2xl p-4 mb-4 text-center" style={{ background: "#1a1a0d", border: "1px solid #fbbf24" }}>
-              <p className="text-lg font-extrabold" style={{ color: "#fbbf24" }}>🔥 ¡Superaste el nivel Normal!</p>
-              <p className="text-sm text-zinc-400 mt-1">La próxima sesión será en dificultad 🔴 Difícil</p>
-            </div>
-          )}
-          {pct >= 70 && dificultadSesionRef.current === "dificil" && (
-            <div className="rounded-2xl p-4 mb-4 text-center" style={{ background: "#2e0a0a", border: "1px solid #f87171" }}>
-              <p className="text-lg font-extrabold" style={{ color: "#f87171" }}>🏆 ¡Nivel completado!</p>
-              <p className="text-sm text-zinc-400 mt-1">El siguiente nivel está desbloqueado</p>
+                      {ia ? (
+                        <div className="res-ai-grid">
+                          {ia.concepto  && <ResExplainCard ico="📘" title="Concepto" body={ia.concepto} tone="blue" />}
+                          {ia.ejemplo   && <ResExplainCard ico="🔢" title="Ejemplo" body={ia.ejemplo} tone="cyan" />}
+                          {ia.error     && <ResExplainCard ico="⚠️" title="Tu error" body={ia.error} tone="red" />}
+                          {ia.practica  && <ResExplainCard ico="🎯" title="Practica" body={ia.practica} tone="green" />}
+                        </div>
+                      ) : (
+                        r.explicacion && (
+                          <div style={{ fontSize: 12.5, color: "var(--text-2)", marginTop: 8, fontStyle: "italic" }}>
+                            💡 {r.explicacion}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )
+                })
+              })()}
             </div>
           )}
 
-          <div className="flex flex-col gap-2">
+          {/* Botones */}
+          <div className="res-actions">
             <button
-              onClick={() => router.push(`/practica?nivel=${nivelId}`)}
-              className="w-full rounded-2xl py-3 font-extrabold text-white transition-all active:scale-95"
-              style={{ background: "rgba(124,58,237,0.8)", border: "1.5px solid rgba(124,58,237,0.6)", boxShadow: "0 4px 0 rgba(109,40,217,0.6)" }}
+              className="res-btn res-btn-secondary"
+              onClick={() => { setFase("teoria"); setSlideTeoria(0); setIndice(0); setResultados([]); setXpGanado(0); setLecciones([]) }}
             >
-              🎯 Practica más con IA
+              Repetir
             </button>
-            <div className="flex gap-2">
-              <button onClick={() => { setFase("teoria"); setSlideTeoria(0); setIndice(0); setResultados([]); setXpGanado(0); setLecciones([]) }}
-                className="flex-1 rounded-2xl py-3 font-bold transition-all"
-                style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", color: "#9ca3af" }}>
-                🔄 Repetir
-              </button>
-              <button onClick={() => router.push("/niveles")}
-                className="flex-1 rounded-2xl py-3 font-extrabold text-white transition-all active:scale-95"
-                style={{ background: "var(--color-primary)", boxShadow: "0 4px 0 var(--color-primary-dark)" }}>
-                Ver niveles
-              </button>
-            </div>
+            <button
+              className="res-btn res-btn-primary"
+              onClick={() => router.push("/niveles")}
+            >
+              Continuar →
+            </button>
           </div>
+
+          <div className="dash-bottom-spacer" />
         </div>
       </div>
     )
@@ -1325,38 +1305,36 @@ function LeccionInner() {
 
 function PantallaFin({ onVolver }) {
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center gap-6 px-4"
-      style={{ background: "transparent" }}
-    >
-      <PageTransition className="flex flex-col items-center gap-6 text-center">
-        <div
-          className="w-24 h-24 rounded-full flex items-center justify-center text-5xl"
-          style={{
-            background: "rgba(255,75,75,0.12)",
-            border: "2px solid rgba(255,75,75,0.4)",
-            boxShadow: "0 0 40px rgba(255,75,75,0.2)",
-          }}
-        >
-          💔
-        </div>
-        <div>
-          <h1 className="text-3xl font-extrabold mb-2">Sin vidas</h1>
-          <p className="text-zinc-400 max-w-xs">
-            Se recarga 1 vida cada 30 min.<br />¡Vuelve pronto!
-          </p>
-        </div>
-        <button
-          onClick={onVolver}
-          className="btn-glow rounded-2xl px-10 py-4 font-extrabold text-lg text-white"
-          style={{
-            background: "linear-gradient(135deg, var(--color-primary), var(--color-primary-dark))",
-            boxShadow: "0 4px 0 var(--color-primary-dark)",
-          }}
-        >
-          ← Ir al inicio
-        </button>
-      </PageTransition>
+    <div className="qs" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "0 20px", textAlign: "center" }}>
+      <div className="qs-bg-orb qs-bg-orb-1" />
+      <div className="qs-bg-orb qs-bg-orb-2" />
+      <div style={{ width: 96, height: 96, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, background: "rgba(239,68,68,0.12)", border: "2px solid rgba(239,68,68,0.4)", boxShadow: "0 0 40px rgba(239,68,68,0.2)" }}>
+        💔
+      </div>
+      <div>
+        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>Sin vidas</h1>
+        <p style={{ color: "var(--text-3)", maxWidth: 280 }}>
+          Se recarga 1 vida cada 30 min.<br />¡Vuelve pronto!
+        </p>
+      </div>
+      <button
+        onClick={onVolver}
+        style={{ padding: "14px 40px", borderRadius: 16, fontWeight: 800, fontSize: 16, background: "var(--accent-green)", color: "#042713", border: "none", cursor: "pointer", boxShadow: "0 4px 0 #14532d" }}
+      >
+        ← Ir al inicio
+      </button>
+    </div>
+  )
+}
+
+function ResExplainCard({ ico, title, body, tone }) {
+  return (
+    <div className={`res-explain res-explain-${tone}`}>
+      <div className="res-explain-hdr">
+        <span className="res-explain-ico">{ico}</span>
+        <span className="res-explain-title">{title}</span>
+      </div>
+      <div className="res-explain-body">{body}</div>
     </div>
   )
 }

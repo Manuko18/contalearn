@@ -101,11 +101,7 @@ function EmpresaInner() {
       const res = await fetch("/api/empresa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mes,
-          preguntasVistasIds,
-          dificultad,
-        }),
+        body: JSON.stringify({ mes, preguntasVistasIds, dificultad }),
       })
       const data = await res.json()
       if (data.caso) {
@@ -155,9 +151,8 @@ function EmpresaInner() {
     const nuevasCorrectas = correctasMes + 1
     setCorrectasMes(nuevasCorrectas)
 
-    if (esRepaso) return // Mes ya completado — sin XP ni avance
+    if (esRepaso) return
 
-    // +5 XP solo en el mes actual
     const nuevoXp = (perfil.xp_total || 0) + 5
     let nuevoMes = perfil.empresa_mes || 0
     let nuevoTitulo = perfil.titulo_empresa
@@ -177,7 +172,6 @@ function EmpresaInner() {
 
     setPerfil(prev => ({ ...prev, xp_total: nuevoXp, empresa_mes: nuevoMes, titulo_empresa: nuevoTitulo }))
 
-    // Chequear logros
     const newAchs = checkNewAchievements({
       xp: nuevoXp,
       racha: perfil.racha_actual || 0,
@@ -214,207 +208,225 @@ function EmpresaInner() {
   const mesJugando = mesActivo ?? mes
   const esRepaso = mesJugando < mes
   const tituloActual = getTitulo(mes)
-  const progresoMes = Math.min((correctasMes / CORRECTAS_POR_MES) * 100, 100)
+  const progresoMes = Math.min(Math.round((correctasMes / CORRECTAS_POR_MES) * 100), 100)
 
   if (loading) return <><Navbar /><LoadingConti texto="Cargando empresa..." /></>
 
   return (
-    <div className="min-h-screen flex flex-col md:pt-20" style={{ background: "transparent" }}>
-      <Navbar />
+    <div className="qs scr-empresa">
+      <div className="qs-bg-orb qs-bg-orb-1" />
+      <div className="qs-bg-orb qs-bg-orb-2" />
 
-      <div className="flex-1 flex flex-col max-w-2xl w-full mx-auto px-4 py-4">
+      <header className="scr-header">
+        <button className="scr-back" onClick={() => router.push("/")}>←</button>
+        <div className="scr-title">Modo Empresa</div>
+        <div className={`scr-hdr-chip emp-chip`}>
+          <span>{tituloActual.badge || "🏢"}</span>
+          <span>{tituloActual.titulo || "Empresa"}</span>
+        </div>
+      </header>
 
-        {/* Header empresa */}
-        <div
-          className="rounded-2xl p-4 mb-4"
-          style={{ background: "rgba(234,179,8,0.1)", border: "1.5px solid rgba(234,179,8,0.3)" }}
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <button onClick={() => router.back()} className="text-zinc-400 hover:text-white text-xl">←</button>
-            <div className="text-2xl">🏢</div>
-            <div className="flex-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-yellow-400">Modo Empresa</p>
-              <h1 className="text-base font-extrabold text-white">Distribuidora Andes S.A.</h1>
-              <p className="text-xs text-zinc-400">
-                {tituloActual.titulo
-                  ? `${tituloActual.badge} ${tituloActual.titulo} · Mes ${mes + 1}`
-                  : `Mes ${mes + 1} — ${MESES[mes % 12]}`}
-                {dificultad === "facil" && <span className="ml-2 text-blue-400 font-bold">· Fácil 🎯</span>}
-                {dificultad === "dificil" && <span className="ml-2 text-red-400 font-bold">· Difícil 🔥</span>}
-              </p>
-            </div>
-            <div className="text-right flex-shrink-0">
-              {esRepaso ? (
-                <>
-                  <p className="text-sm font-bold text-zinc-500">Repaso</p>
-                  <p className="text-xs text-zinc-600">Sin XP</p>
-                </>
-              ) : (
-                <>
-                  <p className="text-lg font-extrabold text-yellow-400">+5 XP</p>
-                  <p className="text-xs text-zinc-500">por acierto</p>
-                </>
-              )}
-            </div>
+      <div className="scr-scroll">
+        {/* Mes bar */}
+        <div className="emp-mes-bar">
+          <div className="emp-mes-info">
+            <div className="emp-mes-lbl">MES {mes + 1} · {MESES[mes % 12].toUpperCase()}</div>
+            <div className="emp-mes-co">Distribuidora Andes S.A.</div>
           </div>
+          <div className="emp-mes-progress">
+            <div className="emp-mes-track">
+              <div className="emp-mes-fill" style={{ width: `${progresoMes}%` }} />
+            </div>
+            <span>{progresoMes}%</span>
+          </div>
+        </div>
 
-          {/* Selector meses anteriores */}
-          {mes > 0 && (
-            <div className="flex gap-2 flex-wrap mb-3">
-              {Array.from({ length: mes }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => cambiarMes(i)}
-                  className="text-xs px-2.5 py-1 rounded-lg font-bold transition-all"
-                  style={{
-                    background: mesJugando === i ? "rgba(234,179,8,0.25)" : "rgba(255,255,255,0.05)",
-                    border: `1px solid ${mesJugando === i ? "rgba(234,179,8,0.6)" : "rgba(255,255,255,0.1)"}`,
-                    color: mesJugando === i ? "#fbbf24" : "#6b7280",
-                  }}
-                >
-                  {MESES[i % 12]}
-                </button>
-              ))}
+        {/* Selector meses anteriores */}
+        {mes > 0 && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+            {Array.from({ length: mes }, (_, i) => (
               <button
-                onClick={() => cambiarMes(mes)}
-                className="text-xs px-2.5 py-1 rounded-lg font-bold transition-all"
+                key={i}
+                onClick={() => cambiarMes(i)}
                 style={{
-                  background: mesJugando === mes ? "rgba(234,179,8,0.25)" : "rgba(255,255,255,0.05)",
-                  border: `1px solid ${mesJugando === mes ? "rgba(234,179,8,0.6)" : "rgba(255,255,255,0.1)"}`,
-                  color: mesJugando === mes ? "#fbbf24" : "#6b7280",
+                  fontSize: 11, padding: "4px 10px", borderRadius: 999, fontWeight: 700,
+                  background: mesJugando === i ? "rgba(6,182,212,0.2)" : "rgba(255,255,255,0.04)",
+                  border: `1px solid ${mesJugando === i ? "rgba(6,182,212,0.5)" : "rgba(255,255,255,0.1)"}`,
+                  color: mesJugando === i ? "#67e8f9" : "var(--text-3)",
+                  cursor: "pointer",
                 }}
               >
-                {MESES[mes % 12]} ← actual
+                {MESES[i % 12]}
               </button>
-            </div>
-          )}
+            ))}
+            <button
+              onClick={() => cambiarMes(mes)}
+              style={{
+                fontSize: 11, padding: "4px 10px", borderRadius: 999, fontWeight: 700,
+                background: mesJugando === mes ? "rgba(6,182,212,0.2)" : "rgba(255,255,255,0.04)",
+                border: `1px solid ${mesJugando === mes ? "rgba(6,182,212,0.5)" : "rgba(255,255,255,0.1)"}`,
+                color: mesJugando === mes ? "#67e8f9" : "var(--text-3)",
+                cursor: "pointer",
+              }}
+            >
+              {MESES[mes % 12]} ← actual
+            </button>
+          </div>
+        )}
 
-          {/* Progreso del mes */}
-          <div>
-            <div className="flex justify-between text-xs text-zinc-400 mb-1">
-              <span>Progreso {MESES[mes % 12]}</span>
-              <span>{correctasMes}/{CORRECTAS_POR_MES} correctas</span>
+        {/* Difficulty indicator */}
+        <div className="emp-diff-row">
+          <div className="emp-diff-label">Dificultad adaptativa</div>
+          <div className="emp-diff-bar">
+            <div className={`emp-diff-step ${dificultad !== "facil" ? "past" : "cur"}`}>
+              <span className="emp-diff-dot" /><span>Fácil</span>
             </div>
-            <div className="w-full rounded-full h-1.5" style={{ background: "rgba(0,0,0,0.3)" }}>
-              <div
-                className="h-1.5 rounded-full transition-all duration-500"
-                style={{ width: `${progresoMes}%`, background: "#eab308", boxShadow: "0 0 8px #eab30888" }}
-              />
+            <div className={`emp-diff-step ${dificultad === "normal" ? "cur" : dificultad === "dificil" ? "past" : ""}`}>
+              <span className="emp-diff-dot" /><span>Normal</span>
             </div>
-            {correctasMes >= CORRECTAS_POR_MES && (
-              <p className="text-xs text-yellow-400 font-bold mt-1 text-center">¡Mes completado! Avanzaste al siguiente 🎉</p>
-            )}
+            <div className={`emp-diff-step ${dificultad === "dificil" ? "cur" : ""}`}>
+              <span className="emp-diff-dot" /><span>Difícil</span>
+            </div>
+          </div>
+          <div className="emp-diff-meta">
+            <span className="emp-diff-streak">🔥 {aciertosSegidos} correctas</span>
+            {dificultad === "facil" && <span>· 3 más para Normal</span>}
+            {dificultad === "normal" && <span>· 6 más para Difícil</span>}
           </div>
         </div>
 
-        {/* Contenido */}
-        <div className="flex-1 flex flex-col justify-center">
+        {/* Content */}
+        {generando && (
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <div style={{ fontSize: 40, animation: "pulse 1.5s infinite" }}>🏢</div>
+            <p style={{ color: "var(--text-3)", fontSize: 14, marginTop: 12 }}>
+              Generando situación de {mesNombre || MESES[mes % 12]}...
+            </p>
+          </div>
+        )}
 
-          {generando && (
-            <div className="flex flex-col items-center gap-4 py-16">
-              <div className="text-4xl animate-pulse">🏢</div>
-              <p className="text-zinc-400 text-sm">Generando situación de {mesNombre || MESES[mes % 12]}...</p>
-              <div className="flex gap-1.5">
-                {[0, 1, 2].map(i => (
-                  <span key={i} className="w-2 h-2 rounded-full bg-yellow-400 inline-block"
-                    style={{ animation: `bounce 1s infinite ${i * 0.2}s` }} />
-                ))}
-              </div>
+        {!generando && caso && (
+          <>
+            {/* Narrative */}
+            <div className="emp-narrative">
+              <div className="emp-narrative-tag">📅 {mesNombre || MESES[mes % 12]} — Situación del mes</div>
+              <div className="emp-narrative-body">{caso.situacion}</div>
+              {caso.monto && (
+                <div className="emp-narrative-meta">
+                  <span className="emp-narrative-chip">💵 {caso.monto}</span>
+                  {esRepaso && <span className="emp-narrative-chip">📚 Repaso · sin XP</span>}
+                </div>
+              )}
             </div>
-          )}
 
-          {!generando && caso && (
-            <div className="flex flex-col gap-4">
-              {/* Situación */}
+            {/* Question */}
+            <div className="emp-question">{caso.pregunta}</div>
+
+            {/* Options */}
+            <div className="emp-options">
+              {caso.opciones.map((op, i) => {
+                let extraStyle = {}
+                if (respondido) {
+                  if (esCorrecta(op)) extraStyle = { borderColor: "#22c55e", background: "rgba(34,197,94,0.12)", color: "#86efac" }
+                  else if (esSeleccionada(op)) extraStyle = { borderColor: "#ef4444", background: "rgba(239,68,68,0.12)", color: "#fca5a5" }
+                }
+                return (
+                  <button
+                    key={i}
+                    className="emp-option"
+                    onClick={() => responder(op)}
+                    disabled={respondido}
+                    style={{ cursor: respondido ? "default" : "pointer", ...extraStyle }}
+                  >
+                    <span className="qs-option-letter">{["A","B","C","D"][i]}</span>
+                    <span className="qs-option-text">{op}</span>
+                    <span className="qs-option-arrow">→</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Feedback */}
+            {respondido && (
               <div
-                className="rounded-2xl p-5"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1.5px solid rgba(255,255,255,0.1)" }}
+                style={{
+                  background: esCorrecta(seleccion) ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)",
+                  border: `1.5px solid ${esCorrecta(seleccion) ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
+                  borderRadius: 14, padding: "12px 14px",
+                }}
               >
-                <p className="text-xs font-bold uppercase tracking-widest text-yellow-400 mb-2">
-                  📅 {mesNombre} — Situación del mes
+                <p style={{ fontWeight: 800, fontSize: 14, marginBottom: 6, color: esCorrecta(seleccion) ? "#86efac" : "#fca5a5" }}>
+                  {esCorrecta(seleccion) ? "✅ ¡Correcto! +5 XP" : "❌ Incorrecto — sin XP"}
                 </p>
-                <p className="text-zinc-300 text-sm leading-relaxed mb-3">{caso.situacion}</p>
-                <p className="text-white font-semibold text-base">{caso.pregunta}</p>
+                <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--text-2)" }}>{caso.explicacion}</p>
               </div>
+            )}
 
-              {/* Opciones */}
-              <div className="flex flex-col gap-2">
-                {caso.opciones.map((op, i) => {
-                  let borderColor = "rgba(255,255,255,0.1)"
-                  let bg = "rgba(255,255,255,0.04)"
-                  let color = "#d1d5db"
-
-                  if (respondido) {
-                    if (esCorrecta(op)) { borderColor = "#22c55e"; bg = "rgba(34,197,94,0.12)"; color = "#86efac" }
-                    else if (esSeleccionada(op)) { borderColor = "#ef4444"; bg = "rgba(239,68,68,0.12)"; color = "#fca5a5" }
-                  }
-
-                  return (
-                    <button key={i} onClick={() => responder(op)} disabled={respondido}
-                      className="text-left rounded-xl px-4 py-3.5 text-sm font-medium transition-all duration-200 flex items-center gap-3"
-                      style={{ background: bg, border: `1.5px solid ${borderColor}`, color, cursor: respondido ? "default" : "pointer" }}
-                    >
-                      <span className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ background: "rgba(255,255,255,0.06)" }}>
-                        {["A", "B", "C", "D"][i]}
-                      </span>
-                      {op}
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Feedback */}
-              {respondido && (
-                <div
-                  className="rounded-2xl p-4"
+            {respondido && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                  onClick={generarCaso}
                   style={{
-                    background: esCorrecta(seleccion) ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)",
-                    border: `1.5px solid ${esCorrecta(seleccion) ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
+                    padding: "12px", borderRadius: 14, fontWeight: 800, fontSize: 14,
+                    background: "var(--accent-cyan)", color: "#000", border: "none",
+                    cursor: "pointer", boxShadow: "0 4px 0 rgba(0,120,140,0.5)",
                   }}
                 >
-                  <p className="font-bold text-sm mb-1" style={{ color: esCorrecta(seleccion) ? "#86efac" : "#fca5a5" }}>
-                    {esCorrecta(seleccion) ? "✅ ¡Correcto! +5 XP" : "❌ Incorrecto — sin XP"}
-                  </p>
-                  <p className="text-sm text-zinc-300 leading-relaxed">{caso.explicacion}</p>
-                </div>
-              )}
+                  Siguiente situación →
+                </button>
+                <button
+                  onClick={reportarError}
+                  disabled={reportado}
+                  style={{
+                    padding: "8px", borderRadius: 12, fontSize: 12, fontWeight: 700,
+                    background: reportado ? "rgba(239,68,68,0.05)" : "rgba(239,68,68,0.08)",
+                    border: "1px solid rgba(239,68,68,0.2)",
+                    color: reportado ? "var(--text-3)" : "#f87171",
+                    cursor: reportado ? "default" : "pointer",
+                  }}
+                >
+                  {reportado ? "✓ Reportado" : "⚠️ Reportar pregunta incorrecta"}
+                </button>
+              </div>
+            )}
+          </>
+        )}
 
-              {respondido && (
-                <div className="flex flex-col gap-2">
-                  <button onClick={generarCaso}
-                    className="w-full py-3 rounded-2xl font-extrabold text-white text-sm transition-all active:scale-95"
-                    style={{ background: "rgba(234,179,8,0.8)", border: "1.5px solid rgba(234,179,8,0.6)", boxShadow: "0 4px 0 rgba(180,130,0,0.6)", color: "#000" }}
-                  >
-                    Siguiente situación →
-                  </button>
-                  <button onClick={reportarError} disabled={reportado}
-                    className="w-full py-2 rounded-xl text-xs font-semibold transition-all"
-                    style={{
-                      background: reportado ? "rgba(239,68,68,0.05)" : "rgba(239,68,68,0.08)",
-                      border: "1px solid rgba(239,68,68,0.2)",
-                      color: reportado ? "#6b7280" : "#f87171",
-                    }}
-                  >
-                    {reportado ? "✓ Reportado — lo revisaré" : "⚠️ Reportar pregunta incorrecta"}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+        {!generando && !caso && (
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <p style={{ color: "var(--text-3)", fontSize: 13, marginBottom: 16 }}>No se pudo generar la situación.</p>
+            <button
+              onClick={generarCaso}
+              style={{
+                padding: "10px 20px", borderRadius: 12, fontWeight: 700, fontSize: 13,
+                background: "rgba(6,182,212,0.15)", color: "var(--accent-cyan)",
+                border: "1.5px solid rgba(6,182,212,0.35)", cursor: "pointer",
+              }}
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
 
-          {!generando && !caso && (
-            <div className="flex flex-col items-center gap-4 py-16">
-              <p className="text-zinc-500 text-sm">No se pudo generar la situación.</p>
-              <button onClick={generarCaso}
-                className="px-6 py-2.5 rounded-xl font-bold text-sm"
-                style={{ background: "rgba(234,179,8,0.2)", color: "#fbbf24", border: "1.5px solid rgba(234,179,8,0.4)" }}
-              >
-                Reintentar
-              </button>
-            </div>
-          )}
+        {/* Titulos */}
+        <div className="emp-titulos">
+          <div className="emp-titulos-hdr">Tu carrera</div>
+          <div className="emp-titulos-row">
+            {TITULOS.slice(1).map((t) => {
+              const done = mes >= (t.desde + (TITULOS[TITULOS.indexOf(t) + 1]?.desde ?? 99) - t.desde)
+              const active = tituloActual.titulo === t.titulo
+              return (
+                <div key={t.titulo} className={`emp-titulo${active ? " active" : ""}${mes >= (TITULOS[TITULOS.indexOf(t) + 1]?.desde ?? 999) ? " done" : ""}`}>
+                  <span>{t.badge}</span>
+                  <span className="emp-titulo-name" style={{ fontSize: 11 }}>{t.titulo}</span>
+                  {mes >= (TITULOS[TITULOS.indexOf(t) + 1]?.desde ?? 999) && <span className="emp-titulo-tick">✓</span>}
+                </div>
+              )
+            })}
+          </div>
         </div>
+
+        <div className="dash-bottom-spacer" />
       </div>
 
       <AchievementToast
@@ -425,12 +437,7 @@ function EmpresaInner() {
         }}
       />
 
-      <style>{`
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-5px); }
-        }
-      `}</style>
+      <Navbar />
     </div>
   )
 }
