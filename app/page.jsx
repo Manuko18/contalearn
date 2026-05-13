@@ -15,12 +15,19 @@ import { checkNewAchievements } from "../lib/achievements"
 
 // ── Pool de misiones disponibles ──
 const MISIONES_POOL = [
-  { tipo: "responder_preguntas",  descripcion: "Responde 10 preguntas hoy",                    icono: "📝", meta: 10 },
-  { tipo: "correctas_seguidas",   descripcion: "Consigue 5 respuestas correctas seguidas",     icono: "🎯", meta: 5  },
-  { tipo: "completar_subniveles", descripcion: "Completa 2 sub-niveles hoy",                   icono: "🏆", meta: 2  },
-  { tipo: "sin_perder_vida",      descripcion: "Termina una sesión sin perder ninguna vida",   icono: "❤️", meta: 1  },
-  { tipo: "racha_combo",          descripcion: "Alcanza un combo de 3 correctas seguidas",     icono: "🔥", meta: 3  },
-  { tipo: "xp_ganar",             descripcion: "Gana 50 XP jugando hoy",                       icono: "⚡", meta: 50 },
+  // Fáciles (+10 XP)
+  { tipo: "responder_preguntas_5",  descripcion: "Responde 5 preguntas hoy",                    icono: "📝", meta: 5,   xp: 10 },
+  { tipo: "racha_combo_3",          descripcion: "Consigue un combo de 3 correctas seguidas",   icono: "🔥", meta: 3,   xp: 10 },
+  // Normales (+15 XP)
+  { tipo: "responder_preguntas",    descripcion: "Responde 10 preguntas hoy",                   icono: "📝", meta: 10,  xp: 15 },
+  { tipo: "completar_subniveles",   descripcion: "Completa 2 sub-niveles hoy",                  icono: "🏆", meta: 2,   xp: 15 },
+  { tipo: "sin_perder_vida",        descripcion: "Termina una sesión sin perder ninguna vida",  icono: "❤️", meta: 1,   xp: 15 },
+  { tipo: "xp_ganar",               descripcion: "Gana 50 XP jugando hoy",                     icono: "⚡", meta: 50,  xp: 15 },
+  // Difíciles (+25 XP)
+  { tipo: "correctas_seguidas",     descripcion: "Consigue 5 respuestas correctas seguidas",    icono: "🎯", meta: 5,   xp: 25 },
+  { tipo: "xp_ganar_100",           descripcion: "Gana 100 XP en un día",                      icono: "💎", meta: 100, xp: 25 },
+  { tipo: "completar_subniveles_3", descripcion: "Completa 3 sub-niveles hoy",                  icono: "🏅", meta: 3,   xp: 25 },
+  { tipo: "racha_combo_5",          descripcion: "Alcanza un combo de 5 correctas seguidas",    icono: "⚡", meta: 5,   xp: 25 },
 ]
 
 function mezclarPool(arr) { return [...arr].sort(() => Math.random() - 0.5) }
@@ -71,7 +78,7 @@ export default function Home() {
           descripcion: m.descripcion,
           icono: m.icono,
           meta: m.meta,
-          xp_recompensa: 15,
+          xp_recompensa: m.xp ?? 15,
         })))
         .select()
       setMisiones([...(existentes || []), ...(insertadas || [])])
@@ -151,6 +158,34 @@ export default function Home() {
     init()
   }, [router])
 
+  // Countdown en tiempo real: cada minuto re-evalúa si corresponde recargar una vida
+  useEffect(() => {
+    if (!perfil || perfil.vidas >= 5) return
+    const userId = perfil.id
+    const tick = async () => {
+      const { data: fresh } = await supabase
+        .from("users")
+        .select("vidas, ultima_vida_recargada")
+        .eq("id", userId)
+        .single()
+      if (!fresh || fresh.vidas >= 5) { setTiempoVida(null); return }
+      const minutos = Math.floor((Date.now() - new Date(fresh.ultima_vida_recargada).getTime()) / 60000)
+      const vidasGanadas = Math.floor(minutos / 30)
+      if (vidasGanadas > 0) {
+        const nuevasVidas = Math.min(5, fresh.vidas + vidasGanadas)
+        await supabase.from("users").update({
+          vidas: nuevasVidas,
+          ultima_vida_recargada: new Date().toISOString(),
+        }).eq("id", userId)
+        setPerfil(prev => ({ ...prev, vidas: nuevasVidas }))
+        setTiempoVida(nuevasVidas < 5 ? 30 : null)
+      } else {
+        setTiempoVida(30 - (minutos % 30))
+      }
+    }
+    const id = setInterval(tick, 60000)
+    return () => clearInterval(id)
+  }, [perfil?.id, perfil?.vidas])
 
   const salir = async () => {
     await supabase.auth.signOut()
@@ -432,6 +467,13 @@ export default function Home() {
                   sub="Distribuidora Andes S.A."
                   onClick={() => router.push("/empresa")}
                   color="#eab308"
+                />
+                <QuickBtn
+                  icon="🏅"
+                  label="Mis logros"
+                  sub="Ver todos tus logros"
+                  onClick={() => router.push("/logros")}
+                  color="#c084fc"
                 />
               </div>
             </div>

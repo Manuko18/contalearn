@@ -442,13 +442,13 @@ function LeccionInner() {
     for (const m of misiones) {
       let nuevo = m.progreso
 
-      if (m.tipo === "responder_preguntas")
+      if (["responder_preguntas", "responder_preguntas_5"].includes(m.tipo))
         nuevo = Math.min(m.meta, nuevo + preguntasRespRef.current)
 
-      if (m.tipo === "correctas_seguidas" && maxComboRef.current >= m.meta)
+      if (["correctas_seguidas", "racha_combo_3", "racha_combo_5"].includes(m.tipo) && maxComboRef.current >= m.meta)
         nuevo = m.meta
 
-      if (m.tipo === "completar_subniveles")
+      if (["completar_subniveles", "completar_subniveles_3"].includes(m.tipo))
         nuevo = Math.min(m.meta, nuevo + 1)
 
       if (m.tipo === "sin_perder_vida" && vidasPerdidas === 0)
@@ -457,7 +457,7 @@ function LeccionInner() {
       if (m.tipo === "racha_combo" && maxComboRef.current >= m.meta)
         nuevo = m.meta
 
-      if (m.tipo === "xp_ganar")
+      if (["xp_ganar", "xp_ganar_100"].includes(m.tipo))
         nuevo = Math.min(m.meta, nuevo + xpGanadoSesion)
 
       if (nuevo !== m.progreso) {
@@ -508,13 +508,29 @@ function LeccionInner() {
         emitContiEvent("levelComplete")
         setEpicEvent({ type: "levelComplete", data: { subtitle: `${pctFinal}% correcto` } })
       }
-      // Verificar logros desbloqueados en esta sesión
+      // Leer stats acumulativos de BD y guardar los de esta sesión
+      const { data: freshStats } = await supabase
+        .from("users")
+        .select("racha_actual, max_combo, perfect_sessions, clean_sessions, empresa_mes")
+        .eq("id", user.id)
+        .single()
+
+      const newMaxCombo    = Math.max(freshStats?.max_combo    ?? 0, maxComboRef.current)
+      const newPerfect     = (freshStats?.perfect_sessions     ?? 0) + (isPerfect ? 1 : 0)
+      const newClean       = (freshStats?.clean_sessions       ?? 0) + (isClean ? 1 : 0)
+      await supabase.from("users").update({
+        max_combo:        newMaxCombo,
+        perfect_sessions: newPerfect,
+        clean_sessions:   newClean,
+      }).eq("id", user.id)
+
       const newAchs = checkNewAchievements({
         xp:              xp,
-        racha:           0,              // racha se actualiza en BD, usar 0 conservador
-        maxCombo:        maxComboRef.current,
-        perfectSessions: isPerfect ? 1 : 0,
-        cleanSessions:   isClean   ? 1 : 0,
+        racha:           freshStats?.racha_actual ?? 0,
+        maxCombo:        newMaxCombo,
+        perfectSessions: newPerfect,
+        cleanSessions:   newClean,
+        empresaMes:      freshStats?.empresa_mes ?? 0,
       })
       if (newAchs.length > 0) {
         setTimeout(() => {
