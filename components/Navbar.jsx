@@ -55,7 +55,7 @@ export default function Navbar() {
 
         {/* Links */}
         <div className="flex items-center gap-1">
-          {links.map(({ href, icon, label }) => {
+          {links.map(({ href, icon, label, badge }) => {
             const active = pathname === href
             return (
               <Link
