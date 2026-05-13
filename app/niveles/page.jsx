@@ -243,6 +243,47 @@ export default function NivelesPage() {
               <p className="font-semibold">Niveles próximamente</p>
             </div>
           )}
+
+          {/* Modo Desafío — visible solo si al menos un nivel tiene dificil completado */}
+          {progresoPorNivel.some(p => p.completo) && (
+            <div className="mt-2">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-base">⚡</span>
+                <span className="text-sm font-extrabold uppercase tracking-widest" style={{ color: "#ffd700" }}>
+                  Desafío
+                </span>
+                <div className="flex-1 h-px ml-2" style={{ background: "#ffd70033" }} />
+              </div>
+              <button
+                onClick={() => router.push("/desafio")}
+                className="w-full rounded-2xl p-5 text-left transition-all hover:brightness-110 active:scale-[0.99]"
+                style={{
+                  background: "rgba(45,35,10,0.65)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  border: "1.5px solid #ffd700aa",
+                  boxShadow: "0 4px 0 rgba(255,215,0,0.15), 0 0 32px rgba(255,215,0,0.07)",
+                }}
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+                    style={{ background: "rgba(255,215,0,0.12)", border: "1px solid rgba(255,215,0,0.3)" }}
+                  >
+                    ⚡
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: "#ffd700" }}>
+                      Desbloqueado
+                    </p>
+                    <h2 className="text-lg font-extrabold text-white">Modo Desafío</h2>
+                    <p className="text-sm text-zinc-400">10 preguntas · 15 s por pregunta · Todos los niveles</p>
+                  </div>
+                  <span className="text-zinc-400 text-2xl">›</span>
+                </div>
+              </button>
+            </div>
+          )}
         </div>
       </PageTransition>
     </div>
