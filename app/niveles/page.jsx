@@ -245,7 +245,7 @@ export default function NivelesPage() {
           )}
 
           {/* Modo Desafío — visible solo si al menos un nivel tiene dificil completado */}
-          {progresoPorNivel.some(p => p.completo) && (
+          {progresoPorNivel.some(p => p.pasos > 0) && (
             <div className="mt-2">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-base">⚡</span>
