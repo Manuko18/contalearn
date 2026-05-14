@@ -181,7 +181,7 @@ body {
   position: sticky; top: 0; z-index: 10;
   background: rgba(6,11,24,0.7);
   backdrop-filter: blur(12px);
-  margin: -56px -16px 0;
+  margin: 0;
   padding: 16px 16px 12px;
 }
 .scr-back {
