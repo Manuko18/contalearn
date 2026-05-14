@@ -135,8 +135,9 @@ body {
 .scr-scroll {
   position: relative; z-index: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex; flex-direction: column; gap: 14px;
-  padding: 56px 16px 120px;
+  padding: 56px 20px 120px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.1) transparent;
 }
