@@ -143,26 +143,31 @@ body {
 .scr-scroll::-webkit-scrollbar { width: 4px; }
 .scr-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
 
-/* Desktop: centrar con margin auto, single scroll */
+/* Desktop: grid 3 columnas centra contenido sin magia de flex/margin */
 @media (min-width: 768px) {
-  html, body { overflow: hidden; }
   .qs {
     height: 100dvh;
     overflow: hidden;
-  }
-  .scr-scroll {
-    width: 100%;
-    max-width: 700px;
-    margin: 0 auto;
-    height: 100%;
-    overflow-y: auto;
-    padding-top: 80px;
-    padding-bottom: 60px;
+    padding-top: 56px; /* altura del desktop navbar (h-14) */
+    display: grid;
+    grid-template-columns: 1fr min(700px, 100%) 1fr;
+    grid-template-rows: auto 1fr;
   }
   .scr-header {
-    width: 100%;
-    max-width: 700px;
-    margin: 0 auto;
+    grid-column: 2;
+    grid-row: 1;
+    max-width: unset;
+    margin: 0;
+  }
+  .scr-scroll {
+    grid-column: 2;
+    grid-row: 2;
+    overflow-y: auto;
+    min-height: 0;
+    padding-top: 16px;
+    padding-bottom: 60px;
+    max-width: unset;
+    margin: 0;
   }
   .bnav { display: none; }
 }
